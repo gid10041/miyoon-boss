@@ -417,7 +417,7 @@ const ENDINGS = {
     { say:[ sM('아, 안돼....! 안돼안돼,'), sM('모두....나...나 때문에...'), sM('안돼... 일어나, 제발..!') ] },
     { type:{ text:'아아아아아아아아아아아아아', color:'b', ms:80, after:800 } },
     { bgmStop:0 },                              // 브금 끊김
-    { ui:false }, { bg:'black', ms:1200 }, { sfx:'e1_whoosh' },
+    { ui:false, ms:0 }, { bg:'black', ms:0 }, { sfx:'e1_whoosh' },   // 페이드 없이 확 암전
     { wait:1300 }, { clean:true },
     { wait:3700 },                              // 암전으로부터 5초
     { sfx:'e1_void', loop:true },

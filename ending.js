@@ -113,7 +113,10 @@ const Ending = (function () {
     if (o.fin) { fin(o.fin); return; }
     if ('bg' in o) bg(o.bg, o.ms);
     if ('img' in o) img(o.img, o.ms, my);
-    if ('ui' in o) { UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) later(() => { if (my === run) UI.innerHTML = ''; }, 700); }
+    if ('ui' in o) {
+      if (o.ms === 0) { UI.style.transition = 'none'; UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) UI.innerHTML = ''; UI.offsetWidth; UI.style.transition = ''; }   // ms:0 이면 즉시
+      else { UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) later(() => { if (my === run) UI.innerHTML = ''; }, 700); }
+    }
     if ('bgm' in o) snd('bgm', o.bgm, { fade: o.fade });
     if ('bgmStop' in o) snd('stopBgm', o.bgmStop);
     if ('sfx' in o) snd('sfx', o.sfx, { loop: !!o.loop });
