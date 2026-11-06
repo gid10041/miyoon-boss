@@ -133,10 +133,10 @@ body{display:flex;justify-content:center;align-items:center}
 /* 쿵쿵: 배경·별·미윤(#world)만 박자(--beat)마다 확대됐다가 돌아오고, 그때마다 화면에 노이즈가 꼈다 사라져요. UI는 움직이지 않아요 */
 #world{position:absolute;inset:0;transform-origin:50% 42%}
 #game.thump #world{animation:thumpZoom var(--beat,1s) linear infinite}
-@keyframes thumpZoom{0%{transform:scale(1);animation-timing-function:cubic-bezier(.2,.7,.3,1)}6%{transform:scale(1.02);animation-timing-function:cubic-bezier(.33,1,.68,1)}76%,100%{transform:scale(1)}}
+@keyframes thumpZoom{0%{transform:scale(1);animation-timing-function:cubic-bezier(.2,.7,.3,1)}6%{transform:scale(calc(1 + .02*var(--amp,1)));animation-timing-function:cubic-bezier(.33,1,.68,1)}76%,100%{transform:scale(1)}}
 #noise{display:none;position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none;image-rendering:pixelated;opacity:0}
 #game.thump #noise{display:block;animation:noisePulse var(--beat,1s) linear infinite}
-@keyframes noisePulse{0%{opacity:.26;animation-timing-function:cubic-bezier(.5,1,.89,1)}35%,100%{opacity:0}}
+@keyframes noisePulse{0%{opacity:calc(.26*var(--amp,1));animation-timing-function:cubic-bezier(.5,1,.89,1)}35%,100%{opacity:0}}
 #game.recalling #noise{visibility:hidden} /* display:none이면 애니메이션이 처음부터 다시 시작돼 박자가 어긋나요 */
 @media (prefers-reduced-motion:reduce){#game.thump #world,#game.thump #noise{animation:none}}
 /* 큰 흔들림(즉사기·진입). 화면 전체가 흔들려요 */

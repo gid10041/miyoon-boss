@@ -38,7 +38,7 @@ function init(){
   G={turn:1,phase:1,p2n:0,recalled:[],boss:BOSS.maxHp,idx:0,cmds:[],over:false,back:null,cur:null,
      bossSt:[],animals:[],
      p:PARTY.map(d=>({...d,hp:d.maxHp,mp:d.maxMp,def:false,panic:false,st:[],items:d.items.map(i=>({...i}))}))};
-  msgQ=[];Ending.reset();$('#cover').style.display='none';$('#game').classList.remove('thump','recalling','finale','drone','vanish');bgmDuck(false);stopNoise();bgm('p1');{const b=document.getElementById('blackout');if(b)b.remove();}$('#recall').className='';$('#recall').innerHTML='';
+  msgQ=[];Ending.reset();$('#cover').style.display='none';$('#game').classList.remove('thump','recalling','finale','drone','vanish');bgmDuck(false);stopNoise();$('#game').style.removeProperty('--amp');bgm('p1');{const b=document.getElementById('blackout');if(b)b.remove();}$('#recall').className='';$('#recall').innerHTML='';
   setupArt();render();startTurn();
 }
 /* ===== 화면 갱신 ===== */
@@ -54,6 +54,7 @@ function portrait(c){ // 우선순위: 피격 > 쓰러짐 > 패닉 > 힘들어�
 }
 const bossWeak=()=>G.boss/BOSS.maxHp<=BOSS_WEAK_AT;
 function bossImg(hit){ // 현재 페이즈·HP에 맞는 미윤 이미지 (없으면 다음 후보로 대체)
+  if(G.finalArt){const f=firstArt(ART,[G.finalArt]);if(f)return f;} // 마지막 일격 모습(피격 때도 같은 그림)
   const r=G.boss/BOSS.maxHp;let k;
   if(G.phase===2){const low=r<=P2.weakAt;
     k=hit?(low?['boss2WeakHit','boss2Hit','bossWeakHit','bossHit']:['boss2Hit','bossWeakHit','bossHit'])
@@ -383,6 +384,8 @@ function afterActions(){ // 아군 행동이 모두 끝난 뒤, 미윤 공격 �
 function startFinale(){
   G.finale=true;G.cur=null;G.back=null;
   $('#game').classList.add('finale'); // 초상화·보스 HP 바 숨김 (대화창과 공격 버튼만 남음)
+  fadeThump(FINALE.thumpMs);          // 쿵쿵 화면 효과를 서서히 멈춤
+  bgm('final',{fade:FINALE.bgmMs,out:FINALE.bgmMs}); // 2페이즈 BGM → 마지막 일격 BGM으로 서서히 교체
   render();runFinal(0);
 }
 function runFinal(i){
@@ -392,7 +395,8 @@ function runFinal(i){
   if(it.say) return say(it.say,next);
   if(it.btn) return finalBtn(it.btn,next);
   if(it.drone){$('#game').classList.add('drone');return next();}
-  if(it.stab) return finalStab(next);
+  if(it.art){G.finalArt=it.art;setBossArt();return next();} // 미윤 모습 교체(이미지가 없으면 기존 모습 유지)
+  if(it.stab) return finalStab(next,it.art);
   if(it.vanish) return vanishBoss();
   next();
 }
@@ -413,14 +417,16 @@ function finalBtn(o,done){ // 큰 '공격하기' 버튼 하나. 글자색은 그
   focusFirst();
 }
 function finalHit(who){
-  const fx={lacie:['slash','#e0283c'],duke:['burst','#f0d53a'],fascia:['burst','#3fbfe8']}[who];
-  playVfx(fx[0],fx[1],10);flashBossHit();
+  const fx={lacie:['slash','#e0283c'],duke:null,fascia:['burst','#3fbfe8']}[who]; // 듀크는 이펙트(폭발) 없이 타격 연출만
+  if(fx)playVfx(fx[0],fx[1],10);flashBossHit();
   const g=$('#game');g.classList.add('shake');setTimeout(()=>g.classList.remove('shake'),400);
   sfx('final_hit');
 }
-function finalStab(done){ // 미윤이 파시아의 지팡이로 스스로를 찌름: 공격 이펙트 + 일러스트(있으면)
+function finalStab(done,art){ // 미윤이 파시아의 지팡이로 스스로를 찌름: 하얀 번쩍임(폭발 이펙트 없음) + 일러스트(있으면)
   const host=$('#recall'),game=$('#game');
-  playVfx('burst','#3fbfe8',14);flashScreen();bigShake();flashBossHit();sfx('final_stab');
+  flashScreen();bigShake();sfx('final_stab');
+  if(art){G.finalArt=art;setBossArt();} // 번쩍이는 순간 미윤의 모습이 바뀜
+  flashBossHit();
   const has=!!art(FINAL_ILLUST);
   if(has){host.className='on';host.innerHTML='';game.classList.add('recalling');recallShow(FINAL_ILLUST);requestAnimationFrame(()=>requestAnimationFrame(()=>host.classList.add('show')));}
   setTimeout(done,has?1000:700);
@@ -429,7 +435,7 @@ function vanishBoss(){ // 일러스트를 걷고, 미윤이 빛으로 흩어져 
   const g=$('#game'),host=$('#recall');
   g.classList.remove('thump','drone');stopNoise();
   host.classList.remove('show');g.classList.remove('recalling');setTimeout(()=>{host.className='';host.innerHTML='';},600);
-  ui.innerHTML='';g.classList.add('vanish');sfx('vanish');bgmStop(2400);
+  ui.innerHTML='';g.classList.add('vanish');sfx('vanish');
   [0,500,1000,1500].forEach(t=>setTimeout(()=>{if(!G.over)playVfx('diamonds','#bcd2ff',10);},t));
   setTimeout(()=>end('win'),3400);
 }
@@ -481,6 +487,15 @@ function playRecall(r,done){
 }
 /* ----- 2페이즈 쿵쿵의 노이즈 알갱이: 박자 직후 잠깐 보이는 동안만 그려요 ----- */
 let noiseT=0;
+function fadeThump(ms){ // 쿵쿵(확대·노이즈) 세기를 ms 동안 0까지 줄인 뒤 끔. 웅웅 소음(drone)은 따로 유지
+  const g=$('#game'),gm=G,t0=performance.now();
+  (function f(){
+    if(gm!==G) return;
+    const k=Math.min(1,(performance.now()-t0)/ms);
+    g.style.setProperty('--amp',(1-k).toFixed(3));
+    if(k<1) requestAnimationFrame(f); else {g.classList.remove('thump');g.style.removeProperty('--amp');}
+  })();
+}
 function stopNoise(){clearInterval(noiseT);noiseT=0;}
 function startNoise(){
   stopNoise();
@@ -510,7 +525,7 @@ function bgmStop(ms){try{if(window.Snd)Snd.stopBgm(ms);}catch(e){}}
 function bgmWarm(a){try{if(window.Snd)Snd.warm(a);}catch(e){}}
 function sfx(name){try{if(typeof window.playSfx==='function')window.playSfx(name);}catch(e){}} // 효과음 자리(5단계에서 window.playSfx 연결). 이름: 'rip' = 2페이즈 진입 때 찢어지는 소리
 function enterPhase2(){ // 진입 연출. 이번 턴 미윤의 공격은 생략하고 다음 턴(전조 + 즉사기)으로 넘어감
-  bgmStop(2500);bgmWarm(['p2','end2','end3']); // 미윤이 '왜 아직도 안 도망갔냐'고 할 때 1페이즈 브금 페이드 아웃
+  bgmStop(2500);bgmWarm(['p2','final','end2','end3']); // 미윤이 '왜 아직도 안 도망갔냐'고 할 때 1페이즈 브금 페이드 아웃
   say(P2_PRE_LINES,()=>{ // ① 아직 1페이즈 모습(이미지·배경 그대로)
     const bo=document.createElement('div');bo.id='blackout';$('#game').appendChild(bo);
     requestAnimationFrame(()=>requestAnimationFrame(()=>bo.classList.add('on'))); // ② 대화창만 남기고 서서히 암전

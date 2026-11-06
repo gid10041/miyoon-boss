@@ -138,6 +138,7 @@ const Ending = (function () {
     const sc = ENDINGS[k]; if (!sc) return;
     sc.forEach(o => { if (o.img) load(o.img); });          // 일러스트는 미리 내려받아 둠(없으면 안내 문구)
     el.classList.add('on'); GAME.classList.add('ending');
+    if (k === 'win') void el.offsetWidth;   // 엔딩2: 켜지자마자 바뀌면 페이드가 생략되므로, 먼저 화면에 그려서 하얗게 서서히 변하게 함
     step(0, sc, run);
   }
   return { play, reset };
