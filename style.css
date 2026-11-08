@@ -141,6 +141,8 @@ body{display:flex;justify-content:center;align-items:center}
 @media (prefers-reduced-motion:reduce){#game.thump #world,#game.thump #noise{animation:none}}
 /* 큰 흔들림(즉사기·진입). 화면 전체가 흔들려요 */
 .shake.big{animation:shB .6s}
+.sway{animation:swayX 2.6s ease-in-out both} /* 마지막 일격 직전: 크고 느리게 좌우로 */
+@keyframes swayX{0%{transform:translateX(0)}14%{transform:translateX(-5%)}38%{transform:translateX(5%)}60%{transform:translateX(-4%)}80%{transform:translateX(2.4%)}100%{transform:translateX(0)}}
 @keyframes shB{15%{transform:translate(-9px,6px)}30%{transform:translate(8px,-6px)}45%{transform:translate(-7px,4px)}60%{transform:translate(5px,-3px)}80%{transform:translate(-3px,2px)}}
 .flash{position:absolute;inset:0;background:#fff;animation:flashOut .7s ease-out both}
 @keyframes flashOut{0%{opacity:.9}100%{opacity:0}}

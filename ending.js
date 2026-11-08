@@ -34,9 +34,10 @@ const Ending = (function () {
     if (!imgP[src]) imgP[src] = new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
     return imgP[src];
   }
-  function img(src, ms, my, shake) {
+  function img(src, ms, my, shake, cross) {
     const d = ms == null ? 900 : ms;
-    IMG.querySelectorAll('.ri').forEach(o => { o.style.transitionDuration = d + 'ms'; o.classList.remove('on'); setTimeout(() => o.remove(), d + 80); });
+    const old = [...IMG.querySelectorAll('.ri')];
+    if (!cross) old.forEach(o => { o.style.transitionDuration = d + 'ms'; o.classList.remove('on'); setTimeout(() => o.remove(), d + 80); });   // 기본: 이전 그림은 같이 사라지며 교체
     if (!src) return;
     load(src).then(ok => {
       if (my !== run) return;
@@ -45,6 +46,7 @@ const Ending = (function () {
       if (ok) o.style.backgroundImage = `url("${src}")`;
       else { o.classList.add('noimg'); o.textContent = `(일러스트 없음: ${src.split('/').pop()})`; }
       IMG.appendChild(o);
+      if (cross) setTimeout(() => old.forEach(x => x.remove()), d + 80);          // cross: 이전 그림은 그대로 두고 새 그림이 위에 겹쳐 뜬 뒤에 제거(중간에 하얗게 비치지 않음)
       if (d === 0) o.classList.add('on');                                      // 페이드 없이 바로
       else requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('on')));
       if (shake) { GAME.classList.remove('shake'); void GAME.offsetWidth; GAME.classList.add('shake'); later(() => GAME.classList.remove('shake'), 450); }   // 화면 작게 흔들림
@@ -118,7 +120,7 @@ const Ending = (function () {
     if (o.fin) { fin(o.fin); return; }
     if ('bg' in o) bg(o.bg, o.ms);
     if (o.hold) holdUntil = performance.now() + o.hold;
-    if ('img' in o) img(o.img, o.ms, my, o.shake);
+    if ('img' in o) img(o.img, o.ms, my, o.shake, o.cross);
     if ('ui' in o) {
       if (o.ms === 0) { UI.style.transition = 'none'; UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) UI.innerHTML = ''; UI.offsetWidth; UI.style.transition = ''; }   // ms:0 이면 즉시
       else { UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) later(() => { if (my === run) UI.innerHTML = ''; }, 700); }

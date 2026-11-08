@@ -38,7 +38,7 @@ function init(){
   G={turn:1,phase:1,p2n:0,recalled:[],boss:BOSS.maxHp,idx:0,cmds:[],over:false,back:null,cur:null,
      bossSt:[],animals:[],
      p:PARTY.map(d=>({...d,hp:d.maxHp,mp:d.maxMp,def:false,panic:false,st:[],items:d.items.map(i=>({...i}))}))};
-  msgQ=[];Ending.reset();$('#cover').style.display='none';$('#game').classList.remove('thump','recalling','finale','drone','vanish');bgmDuck(false);stopNoise();$('#game').style.removeProperty('--amp');bgm('p1');{const b=document.getElementById('blackout');if(b)b.remove();}$('#recall').className='';$('#recall').innerHTML='';
+  msgQ=[];Ending.reset();$('#cover').style.display='none';$('#game').classList.remove('thump','recalling','finale','drone','vanish','sway');bgmDuck(false);stopNoise();$('#game').style.removeProperty('--amp');bgm('p1');{const b=document.getElementById('blackout');if(b)b.remove();}$('#recall').className='';$('#recall').innerHTML='';
   setupArt();render();startTurn();
 }
 /* ===== 화면 갱신 ===== */
@@ -54,7 +54,7 @@ function portrait(c){ // 우선순위: 피격 > 쓰러짐 > 패닉 > 힘들어�
 }
 const bossWeak=()=>G.boss/BOSS.maxHp<=BOSS_WEAK_AT;
 function bossImg(hit){ // 현재 페이즈·HP에 맞는 미윤 이미지 (없으면 다음 후보로 대체)
-  if(G.finalArt){const f=firstArt(ART,[G.finalArt]);if(f)return f;} // 마지막 일격 모습(피격 때도 같은 그림)
+  if(G.finalArt){const f=firstArt(ART,hit?[G.finalArt+'Hit',G.finalArt]:[G.finalArt]);if(f)return f;} // 마지막 일격 모습. 피격 때는 '…Hit' 그림이 있으면 그것(boss2FinalHit), 없으면 같은 그림
   const r=G.boss/BOSS.maxHp;let k;
   if(G.phase===2){const low=r<=P2.weakAt;
     k=hit?(low?['boss2WeakHit','boss2Hit','bossWeakHit','bossHit']:['boss2Hit','bossWeakHit','bossHit'])
@@ -381,12 +381,22 @@ function afterActions(){ // 아군 행동이 모두 끝난 뒤, 미윤 공격 �
   checkRecalls(bossTurn);
 }
 /* ----- 마지막 일격: 미윤 HP 0 → 레이시·듀크·파시아 순서(FINAL_BLOW, data.js) → 소멸 → 엔딩2 ----- */
-function startFinale(){
+function startFinale(){ // HP 0: 화면이 크고 느리게 좌우로 흔들림 → 미윤 모습이 boss2_final 로 바뀜 → 그 모습으로 마지막 일격 시작
   G.finale=true;G.cur=null;G.back=null;
-  $('#game').classList.add('finale'); // 초상화·보스 HP 바 숨김 (대화창과 공격 버튼만 남음)
-  fadeThump(FINALE.thumpMs);          // 쿵쿵 화면 효과를 서서히 멈춤
-  bgm('final',{fade:FINALE.bgmMs,out:FINALE.bgmMs}); // 2페이즈 BGM → 마지막 일격 BGM으로 서서히 교체
-  render();runFinal(0);
+  const g=$('#game'),gm=G;
+  g.classList.add('sway');
+  setTimeout(()=>{
+    if(gm!==G) return;
+    g.classList.remove('sway');
+    G.finalArt='boss2Final';setBossArt(); // 흔들림이 끝나면 모습이 바뀜(이미지가 없으면 기존 모습 유지)
+    setTimeout(()=>{
+      if(gm!==G) return;
+      g.classList.add('finale');          // 초상화·보스 HP 바 숨김 (대화창과 공격 버튼만 남음)
+      fadeThump(FINALE.thumpMs);          // 쿵쿵 화면 효과를 서서히 멈춤
+      bgm('final',{fade:FINALE.bgmMs,out:FINALE.bgmMs}); // 2페이즈 BGM → 마지막 일격 BGM으로 서서히 교체
+      render();runFinal(0);
+    },FINALE.afterSwapMs);
+  },FINALE.swayMs);
 }
 function runFinal(i){
   if(G.over) return;
