@@ -370,10 +370,10 @@ const AUDIO = {
     atk_lacie:'audio/atk_lacie.mp3',    // 레이시 일반공격
     skill:null,        // 스킬 시전(공통). 아래 스킬별 소리가 비어 있을 때만 대신 나와요
     skill_fascia_burst:'audio/skill_fascia_burst.wav',   // 파시아 스킬 1: 폭발
-    skill_fascia_summon:'audio/fascia_summon.mp3',  // 파시아 스킬 2: 동료 호출
-    skill_duke_dominate:'audio/duke_dominate.mp3',  // 듀크 스킬: 장악
-    skill_lacie_bind:'audio/lacie_bind.mp3',     // 레이시 스킬 1: 구속
-    skill_lacie_burst:'audio/lacie_burst.wav',    // 레이시 스킬 2: 폭발
+    skill_fascia_summon:'audio/skill_fascia_summon.mp3',  // 파시아 스킬 2: 동료 호출
+    skill_duke_dominate:'audio/skill_duke_dominate.mp3',  // 듀크 스킬: 장악
+    skill_lacie_bind:'audio/skill_lacie_bind.mp3',     // 레이시 스킬 1: 구속
+    skill_lacie_burst:'audio/skill_lacie_burst.wav',    // 레이시 스킬 2: 폭발
     boss_hit:'audio/boss_hit.mp3',     // 미윤이 맞음
     boss_atk:'audio/boss_atk.mp3',     // 미윤 일반공격
     boss_all:'audio/boss_all.mp3',     // 미윤 전체공격
