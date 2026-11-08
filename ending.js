@@ -4,13 +4,13 @@
 const Ending = (function () {
   const $e = s => document.querySelector(s);
   const el = $e('#ending'), W = $e('#endW'), K = $e('#endK'), IMG = $e('#endImg'), CR = $e('#endCred'), UI = $e('#endUi'), FIN = $e('#endFin'), GAME = $e('#game');
-  let run = 0, tms = [], clk = null, kind = '';
+  let run = 0, tms = [], clk = null, kind = '', holdUntil = 0;
   const later = (fn, ms) => { const id = setTimeout(fn, ms); tms.push(id); return id; };
   const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const snd = (fn, ...a) => { try { if (window.Snd) return Snd[fn](...a); } catch (e) {} };
 
   /* ----- 클릭·키 한 번에 한 단계 ----- */
-  function fire() { if (!clk) return; const f = clk; clk = null; f(); }
+  function fire() { if (!clk || performance.now() < holdUntil) return; const f = clk; clk = null; f(); }   // hold 동안은 클릭이 무시돼요
   el.addEventListener('click', e => { if (e.target.closest('button')) return; fire(); });
   window.addEventListener('keydown', e => {
     if (!el.classList.contains('on')) return;
@@ -34,7 +34,7 @@ const Ending = (function () {
     if (!imgP[src]) imgP[src] = new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
     return imgP[src];
   }
-  function img(src, ms, my) {
+  function img(src, ms, my, shake) {
     const d = ms == null ? 900 : ms;
     IMG.querySelectorAll('.ri').forEach(o => { o.style.transitionDuration = d + 'ms'; o.classList.remove('on'); setTimeout(() => o.remove(), d + 80); });
     if (!src) return;
@@ -45,7 +45,9 @@ const Ending = (function () {
       if (ok) o.style.backgroundImage = `url("${src}")`;
       else { o.classList.add('noimg'); o.textContent = `(일러스트 없음: ${src.split('/').pop()})`; }
       IMG.appendChild(o);
-      requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('on')));
+      if (d === 0) o.classList.add('on');                                      // 페이드 없이 바로
+      else requestAnimationFrame(() => requestAnimationFrame(() => o.classList.add('on')));
+      if (shake) { GAME.classList.remove('shake'); void GAME.offsetWidth; GAME.classList.add('shake'); later(() => GAME.classList.remove('shake'), 450); }   // 화면 작게 흔들림
     });
   }
 
@@ -60,7 +62,9 @@ const Ending = (function () {
     const show = () => {
       const [t, c, auto] = q[k];
       UI.style.opacity = 1;
-      UI.innerHTML = `<div class="panel dlg">${line(t, c)}${auto ? '' : '<span class="tip">▼</span>'}</div>`;
+      const hold = Math.max(0, holdUntil - performance.now());
+      UI.innerHTML = `<div class="panel dlg">${line(t, c)}${auto ? '' : `<span class="tip"${hold ? ' style="visibility:hidden"' : ''}>▼</span>`}</div>`;
+      if (hold && !auto) later(() => { const tp = UI.querySelector('.tip'); if (tp) tp.style.visibility = ''; }, hold);   // 클릭할 수 있게 되면 ▼ 표시
       const go = () => { clk = null; k++; if (k < q.length) show(); else { UI.innerHTML = ''; next(); } };
       if (auto) later(go, auto); else clk = go;
     };
@@ -80,10 +84,11 @@ const Ending = (function () {
   /* ----- 크레딧: 줄이 차례로 떠오르고, 클릭하면 다음으로 ----- */
   function credits(next) {
     K.style.transitionDuration = '600ms'; K.style.opacity = 1;
-    CR.innerHTML = CREDITS.map((t, i) => `<div style="animation-delay:${(i * 0.4).toFixed(2)}s">${t ? esc(t) : '&nbsp;'}</div>`).join('') + '<span class="tip">▼</span>';
+    const allIn = ((CREDITS.length - 1) * 0.4 + 0.9) * 1000, wait = allIn + CREDITS_HOLD;   // 마지막 줄이 다 뜬 시각 + 3초
+    CR.innerHTML = CREDITS.map((t, i) => `<div style="animation-delay:${(i * 0.4).toFixed(2)}s">${t ? esc(t) : '&nbsp;'}</div>`).join('') + `<span class="tip" style="animation-delay:${(wait / 1000).toFixed(2)}s">▼</span>`;
     CR.classList.add('on');
     const t0 = performance.now();
-    const go = () => { if (performance.now() - t0 < 900) { clk = go; return; } clk = null; CR.classList.remove('on'); next(); };
+    const go = () => { if (performance.now() - t0 < wait) { clk = go; return; } clk = null; CR.classList.remove('on'); next(); };
     clk = go;
   }
 
@@ -112,7 +117,8 @@ const Ending = (function () {
     if (o.credits) return credits(nx);
     if (o.fin) { fin(o.fin); return; }
     if ('bg' in o) bg(o.bg, o.ms);
-    if ('img' in o) img(o.img, o.ms, my);
+    if (o.hold) holdUntil = performance.now() + o.hold;
+    if ('img' in o) img(o.img, o.ms, my, o.shake);
     if ('ui' in o) {
       if (o.ms === 0) { UI.style.transition = 'none'; UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) UI.innerHTML = ''; UI.offsetWidth; UI.style.transition = ''; }   // ms:0 이면 즉시
       else { UI.style.opacity = o.ui ? 1 : 0; if (!o.ui) later(() => { if (my === run) UI.innerHTML = ''; }, 700); }
@@ -126,7 +132,7 @@ const Ending = (function () {
   }
 
   function reset() {
-    run++; tms.forEach(clearTimeout); tms = []; clk = null;
+    run++; tms.forEach(clearTimeout); tms = []; clk = null; holdUntil = 0; GAME.classList.remove('shake');
     el.classList.remove('on'); GAME.classList.remove('ending');
     W.style.transitionDuration = K.style.transitionDuration = '0ms'; W.style.opacity = 0; K.style.opacity = 0;
     IMG.innerHTML = ''; UI.innerHTML = ''; UI.style.opacity = 0; CR.innerHTML = ''; CR.classList.remove('on');

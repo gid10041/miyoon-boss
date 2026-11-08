@@ -335,7 +335,7 @@ function skillResult(i,c,s,ok){
   const hp0=c.hp;c.mp-=s.mp;c.hp=Math.max(1,c.hp-(s.hp||0));
   delta(i,'mp',-s.mp);delta(i,'hp',c.hp-hp0);
   if(!ok){L.push('하지만 빗나갔다...');const pm=syncPanic(c);if(pm)L.push(pm);return L;}
-  sfx('skill');flashSkill(i);playVfx(s.vfx,s.vfxColor,s.sparkle);
+  sfxAny(s.sfx,'skill');flashSkill(i);playVfx(s.vfx,s.vfxColor,s.sparkle);
   if(s.fx==='summon'){
     let n=0;for(let k=0;k<ANIMAL.count;k++)if(!G.animals[k]||G.animals[k].hp<=0){G.animals[k]={hp:ANIMAL.hp};n++;}
     addSt(c.st,'weak',FX.summonDebuff);
@@ -356,7 +356,7 @@ function doAct(i,cmd){
   const c=G.p[i];
   if(cmd.t==='def'){sfx('guard');c.def=true;return [`${c.name}은(는) 몸을 웅크려 방어 태세를 취했다.`];}
   if(cmd.t==='atk'){ // 일반공격은 미니게임 없이 바로 적용(미니게임은 스킬에만)
-    sfx('atk');const d=hitBoss(atkOf(c)*rnd(.9,1.1));
+    sfxAny('atk_'+c.id,'atk');const d=hitBoss(atkOf(c)*rnd(.9,1.1));
     return [`${c.name}의 공격! 미윤에게 ${d}의 데미지.`];
   }
   if(cmd.t==='skill'){
@@ -394,9 +394,9 @@ function runFinal(i){
   if(!it) return vanishBoss();
   if(it.say) return say(it.say,next);
   if(it.btn) return finalBtn(it.btn,next);
-  if(it.drone){$('#game').classList.add('drone');return next();}
-  if(it.art){G.finalArt=it.art;setBossArt();return next();} // 미윤 모습 교체(이미지가 없으면 기존 모습 유지)
-  if(it.stab) return finalStab(next,it.art);
+  if(it.drone){$('#game').classList.add('drone');sfx('drone',{loop:true});return next();} // 웅웅 소음(화면 노이즈 + 효과음)
+  if(it.stab) return finalStab(next,it.art);                  // 찌르기 연출(미윤 모습 교체도 여기서 함)
+  if(it.art){G.finalArt=it.art;setBossArt();return next();} // 미윤 모습만 교체(이미지가 없으면 기존 모습 유지)
   if(it.vanish) return vanishBoss();
   next();
 }
@@ -422,10 +422,10 @@ function finalHit(who){
   const g=$('#game');g.classList.add('shake');setTimeout(()=>g.classList.remove('shake'),400);
   sfx('final_hit');
 }
-function finalStab(done,art){ // 미윤이 파시아의 지팡이로 스스로를 찌름: 하얀 번쩍임(폭발 이펙트 없음) + 일러스트(있으면)
+function finalStab(done,newArt){ // 미윤이 파시아의 지팡이로 스스로를 찌름: 하얀 번쩍임(폭발 이펙트 없음) + 일러스트(있으면)
   const host=$('#recall'),game=$('#game');
   flashScreen();bigShake();sfx('final_stab');
-  if(art){G.finalArt=art;setBossArt();} // 번쩍이는 순간 미윤의 모습이 바뀜
+  if(newArt){G.finalArt=newArt;setBossArt();} // 번쩍이는 순간 미윤의 모습이 바뀜
   flashBossHit();
   const has=!!art(FINAL_ILLUST);
   if(has){host.className='on';host.innerHTML='';game.classList.add('recalling');recallShow(FINAL_ILLUST);requestAnimationFrame(()=>requestAnimationFrame(()=>host.classList.add('show')));}
@@ -435,7 +435,7 @@ function vanishBoss(){ // 일러스트를 걷고, 미윤이 빛으로 흩어져 
   const g=$('#game'),host=$('#recall');
   g.classList.remove('thump','drone');stopNoise();
   host.classList.remove('show');g.classList.remove('recalling');setTimeout(()=>{host.className='';host.innerHTML='';},600);
-  ui.innerHTML='';g.classList.add('vanish');sfx('vanish');
+  ui.innerHTML='';g.classList.add('vanish');sfxStop('drone');sfx('vanish');
   [0,500,1000,1500].forEach(t=>setTimeout(()=>{if(!G.over)playVfx('diamonds','#bcd2ff',10);},t));
   setTimeout(()=>end('win'),3400);
 }
@@ -523,7 +523,9 @@ function bigShake(){const g=$('#game');g.classList.add('shake','big');setTimeout
 function bgm(n,o){try{if(window.Snd)Snd.bgm(n,o);}catch(e){}} // BGM 시작: 'p1'(1페이즈) 'p2'(2페이즈) 'end2' 'end3' (곡 파일은 data.js 의 AUDIO.bgm)
 function bgmStop(ms){try{if(window.Snd)Snd.stopBgm(ms);}catch(e){}}
 function bgmWarm(a){try{if(window.Snd)Snd.warm(a);}catch(e){}}
-function sfx(name){try{if(typeof window.playSfx==='function')window.playSfx(name);}catch(e){}} // 효과음 자리(5단계에서 window.playSfx 연결). 이름: 'rip' = 2페이즈 진입 때 찢어지는 소리
+function sfx(name,opts){try{if(typeof window.playSfx==='function')window.playSfx(name,opts);}catch(e){}}
+function sfxStop(name){try{if(window.Snd)Snd.stopSfx(name);}catch(e){}}
+function sfxAny(...names){const A=AUDIO.sfx||{},k=names.find(n=>n&&A[n]);if(k)sfx(k);} // 앞 이름부터 파일이 지정된 첫 소리를 재생(캐릭터별 → 공통 순) // 효과음 자리(5단계에서 window.playSfx 연결). 이름: 'rip' = 2페이즈 진입 때 찢어지는 소리
 function enterPhase2(){ // 진입 연출. 이번 턴 미윤의 공격은 생략하고 다음 턴(전조 + 즉사기)으로 넘어감
   bgmStop(2500);bgmWarm(['p2','final','end2','end3']); // 미윤이 '왜 아직도 안 도망갔냐'고 할 때 1페이즈 브금 페이드 아웃
   say(P2_PRE_LINES,()=>{ // ① 아직 1페이즈 모습(이미지·배경 그대로)
