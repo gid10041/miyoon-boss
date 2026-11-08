@@ -429,7 +429,7 @@ const CREDITS = [
   'wasting-d2s1',
   '',
   'Special Thanks',
-  '오코'
+  '오코',
   '',
   '플레이해 주셔서 감사합니다'
 ];
