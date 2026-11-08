@@ -374,7 +374,7 @@ const AUDIO = {
     skill_duke_dominate:'audio/duke_dominate.mp3',  // 듀크 스킬: 장악
     skill_lacie_bind:'audio/lacie_bind.mp3',     // 레이시 스킬 1: 구속
     skill_lacie_burst:'audio/lacie_burst.wav',    // 레이시 스킬 2: 폭발
-    boss_hit:null,     // 미윤이 맞음
+    boss_hit:'audio/boss_hit.mp3',     // 미윤이 맞음
     boss_atk:'audio/boss_atk.mp3',     // 미윤 일반공격
     boss_all:'audio/boss_all.mp3',     // 미윤 전체공격
     kill_hit:'audio/kill_hit.mp3',     // 2페이즈 첫 턴 즉사기가 닿는 순간
