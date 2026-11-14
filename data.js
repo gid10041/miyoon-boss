@@ -310,14 +310,14 @@ const PARTY = [
  {id:'fascia',name:'파시아',icon:'파',color:'#3fbfe8',x:38,maxHp:130,maxMp:50,atk:40,dodge:0.3,guard:0,
   skills:[{n:'폭발',sfx:'skill_fascia_burst',game:{type:'tap',n:5,sec:3},vfx:'burst',vfxColor:'#3fbfe8',sparkle:10,mp:10,hp:15,pow:2.6,desc:'HP를 소량 깎아 큰 데미지로 공격한다.'},
           {n:'동료 호출',sfx:'skill_fascia_summon',game:{type:'tap',n:7,sec:5},vfx:'diamonds',vfxColor:'#3fbfe8',mp:20,hp:0,fx:'summon',desc:'소동물 2마리를 부른다. 미윤을 공격하거나 파시아 대신 공격을 맞는다. 다음 2턴 동안 파시아의 공격력·방어력이 떨어진다.'}],
-  items:[{n:'붕대',q:5,heal:30,desc:'HP 소량 회복'},{n:'회복약',q:10,heal:70,desc:'HP 중량 회복'},{n:'커피',q:10,mp:30,dodge:true,desc:'MP 중량 회복. 회피 확률 +30% (이번 턴과 다음 턴).'}]}, // ★테스트용: 회복약·커피 10개씩 (원래 회복약 2개, 커피 없음)
+  items:[{n:'붕대',q:5,heal:30,desc:'HP 소량 회복'},{n:'회복약',q:3,heal:70,desc:'HP 중량 회복'},{n:'커피',q:2,mp:30,dodge:true,desc:'MP 중량 회복. 회피 확률 +30% (이번 턴과 다음 턴).'}]}, // ★테스트용: 회복약·커피 10개씩 (원래 회복약 2개, 커피 없음)
  {id:'duke',name:'듀크',icon:'듀',color:'#f0d53a',x:328,maxHp:100,maxMp:50,atk:55,dodge:0,guard:0,tags:['공격력 ↑'],
   skills:[{n:'장악',sfx:'skill_duke_dominate',game:{type:'mash',keys:2,times:15,sec:5},vfx:'vignette',mp:15,hp:8,fx:'dominate',desc:'눈으로 미윤을 장악해 공격력과 방어력을 크게 줄인다.'}],
-  items:[{n:'커피',q:10,mp:30,dodge:true,desc:'MP 중량 회복. 회피 확률 +30% (이번 턴과 다음 턴).'},{n:'회복약',q:10,heal:70,desc:'HP 중량 회복'}]}, // ★테스트용: 회복약·커피 10개씩 (원래 커피 2개, 회복약 없음)
+  items:[{n:'커피',q:5,mp:30,dodge:true,desc:'MP 중량 회복. 회피 확률 +30% (이번 턴과 다음 턴).'},{n:'회복약',q:2,heal:70,desc:'HP 중량 회복'}]}, // ★테스트용: 회복약·커피 10개씩 (원래 커피 2개, 회복약 없음)
  {id:'lacie',name:'레이시',icon:'레',color:'#e02b34',x:615,maxHp:100,maxMp:90,atk:25,dodge:0,guard:0.4,panicAt:0.15,
   skills:[{n:'구속',sfx:'skill_lacie_bind',game:{type:'hold',n:4,sec:3,slip:2},vfx:'slash',mp:15,hp:0,fx:'bind',rate:0.3,desc:'30% 확률로 성공하면 미윤이 이번 턴 공격하지 못한다. 즉사기에는 사용할 수 없다.'},
           {n:'폭발',sfx:'skill_lacie_burst',game:{type:'hold',n:5,sec:3,slip:1},vfx:'burst',vfxColor:'#e0283c',mp:10,hp:10,pow:3.2,needLow:true,desc:'HP 60% 이하에서 사용 가능. 큰 데미지.'}],
-  items:[{n:'회복약',q:10,heal:70,desc:'HP 중량 회복'},{n:'부활약',q:1,revive:35,desc:'쓰러진 동료를 소량의 HP로 되살린다.'},{n:'커피',q:10,mp:30,dodge:true,desc:'MP 중량 회복. 회피 확률 +30% (이번 턴과 다음 턴).'}] } // ★테스트용: 회복약·커피 10개씩 (원래 회복약 3개, 커피 없음)
+  items:[{n:'회복약',q:5,heal:70,desc:'HP 중량 회복'},{n:'부활약',q:1,revive:35,desc:'쓰러진 동료를 소량의 HP로 되살린다.'}] } // ★테스트용: 회복약·커피 10개씩 (원래 회복약 3개, 커피 없음)
 ];
 
 /* ===== 2단계 수치 =====
