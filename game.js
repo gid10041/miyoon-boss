@@ -1,12 +1,16 @@
 /* ===== 게임 로직 (data.js를 먼저 불러온 뒤 실행) ===== */
 const $=s=>document.querySelector(s), ui=$('#ui'), TOUCH=matchMedia('(hover:none)').matches;
-const OK={}; let G, msgQ=[], msgDone=null, lastRedo=null;
-const preload=src=>new Promise(r=>{if(!src)return r();const im=new Image();im.onload=()=>{OK[src]=1;r()};im.onerror=()=>r();im.src=src;});
+const OK={}, PRE={}; let G, msgQ=[], msgDone=null, lastRedo=null;
+const preload=src=>new Promise(r=>{if(!src)return r();const im=new Image();im.onload=()=>{OK[src]=1;PRE[src]=im;r()};im.onerror=()=>r();im.src=src;});
 const mob=src=>src.replace(/^img\//,'img/m/').replace(/\.png$/,'.webp'); // 모바일용 작은 그림 경로
 const art=src=>{if(!src||!OK[src])return null;return TOUCH&&OK[mob(src)]?mob(src):src;}; // 터치 기기 + 작은 버전이 있으면 그것, 아니면 원본
 /* 2) 미리 디코딩: 곧 쓸 그림만 화면용 비트맵으로 미리 풀어 둠 (전부 풀면 모바일 메모리 부족) */
 const WARM={};
-function warm(src){const s=src&&art(src);if(!s||WARM[s])return;const im=new Image();im.src=s;WARM[s]=im;if(im.decode)im.decode().catch(()=>{});}
+function warm(src){const s=src&&art(src),im=s&&PRE[s];if(im&&im.decode)im.decode().catch(()=>{});}
+/* 그림 바꾸기: 디코딩이 끝난 뒤에만 주소를 바꿔요. 그 전까지는 이전 그림이 그대로 보여요 */
+function paint(el,src){const tok=el._tok=(el._tok||0)+1;if(!src){el.style.backgroundImage='';return;}
+  const im=PRE[src],apply=()=>{if(el._tok===tok)el.style.backgroundImage=`url(${src})`;};
+  if(im&&im.decode)im.decode().then(apply,apply);else apply();}
 const alive=c=>c.hp>0, rnd=(a,b)=>a+Math.random()*(b-a);
 /* ----- 대화 텍스트: 이름 색칠 + 데미지 숫자 볼드 ----- */
 const NAME_RE=new RegExp(Object.keys(NAME_COLORS).join('|'),'g');
@@ -28,7 +32,7 @@ function syncPanic(c){ // HP가 panicAt 이하면 패닉(행동불능), 회복�
 }
 
 function setupArt(){
-  const set=(id,src)=>{$(id).style.backgroundImage=src?`url(${src})`:'';};
+  const set=(id,src)=>paint($(id),src);
   const p2=!!(G&&G.phase===2); // 2페이즈 이미지가 없으면 1페이즈 이미지를 그대로 사용
   set('#bgL',(p2&&art(ART.bg2))||art(ART.bg));
   set('#atkL',(p2&&art(ART.starAttack2))||art(ART.starAttack));
@@ -67,7 +71,7 @@ function bossImg(hit){ // 현재 페이즈·HP에 맞는 미윤 이미지 (없�
   return firstArt(ART,k);
 }
 function setBossArt(){
-  const set=(id,src)=>{$(id).style.backgroundImage=src?`url(${src})`:'';};
+  const set=(id,src)=>paint($(id),src);
   set('#bossL',bossImg(false));
   set('#bossHitL',bossImg(true));
 }
@@ -91,8 +95,12 @@ function render(){
   $('#animals').innerHTML=liveAnimals().length?G.animals.map((a,k)=>
     `<div class="an ${a.hp<=0?'dead':''}"><span>${TX('소동물{k}','Creature {k}',{k:k+1})}</span><div class="bar hp"><i style="width:${a.hp/ANIMAL.hp*100}%"></i></div></div>`).join(''):'';
   const cs=G.p.map(c=>({c,src:portrait(c),weak:c.hp>0&&c.hp/c.maxHp<=0.3}));
-  $('#portraits').innerHTML=cs.map(({c,src,weak})=>src?
-    `<div class="pl ${c.hp<=0&&!art(ART[c.id].ko)?'ko':''} ${weak?'weak':''}" style="background-image:url(${src})"></div>`:'').join('');
+  const pw=$('#portraits');cs.forEach(({c,src,weak},i)=>{ // 초상화 요소는 한 번만 만들고 재사용 (그림이 사라졌다 나타나지 않게)
+    let el=document.getElementById('pl'+i);
+    if(!el){el=document.createElement('div');el.id='pl'+i;el.className='pl';pw.appendChild(el);}
+    el.className='pl '+(c.hp<=0&&!art(ART[c.id].ko)?'ko':'')+' '+(weak?'weak':'');
+    el.style.display=src?'':'none';if(src)paint(el,src);
+  });
   $('#party').innerHTML=cs.map(({c,src,weak},i)=>
     `<div class="m ${src?'':'noart'} ${G.cur===i?'cur':''} ${c.hp<=0?'ko':''} ${c.hit?'hit':''} ${c.skillFx?'skill':''} ${art(ART[c.id].hit)?'':'nohitart'}" id="m${i}" style="left:${c.x/9}%;--c:${c.color}">
      <div class="chips">${chips(c.st)}</div>
@@ -461,14 +469,19 @@ function checkRecalls(done,above){ // above를 주면 at이 above보다 큰 회�
   playRecall(r,()=>checkRecalls(done,above));
 }
 function bgmDuck(on){try{if(typeof window.setBgmDuck==='function')window.setBgmDuck(on);}catch(e){}} // 회상 중 브금 볼륨을 줄이는 자리(5단계에서 window.setBgmDuck(true/false) 연결)
-function recallShow(src,optional){ // 일러스트 교체(이전 장면 위에 새 장면이 서서히 덮임). src가 없으면 검은 화면, optional인데 파일이 없으면 이전 일러스트 유지
+function recallShow(src,optional){ // 새 장면은 그림이 디코딩된 뒤에 붙이고, 이전 장면은 새 장면이 다 나온 뒤에 지워요
   const host=$('#recall'),n=document.createElement('div'),a=src?art(src):null;
   if(src&&!a&&optional) return;
   n.className='ri'+(!src?' black':a?'':' noimg');
   if(a) n.style.backgroundImage=`url(${a})`; else if(src) n.textContent=TX('(회상 일러스트 없음: {s})',"(Recall illustration missing: {s})",{s:src});
-  host.appendChild(n);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>n.classList.add('on')));
-  setTimeout(()=>{let o=n.previousElementSibling;while(o){const q=o.previousElementSibling;o.remove();o=q;}},560); // 이 장면보다 먼저 깔린 장면만 치움(빨리 넘겨서 더 새로운 장면이 있어도 지우지 않음)
+  const go=()=>{
+    host.appendChild(n);
+    void n.offsetWidth;                        // 처음 상태(투명)를 먼저 계산한 뒤에
+    n.classList.add('on');                     // 투명도 전환 시작
+    setTimeout(()=>{let o=n.previousElementSibling;while(o){const q=o.previousElementSibling;o.remove();o=q;}},600); // 전환(0.5초)이 끝난 뒤 이전 장면 제거
+  };
+  const im=a&&PRE[a];
+  if(im&&im.decode) im.decode().then(go,go); else go();
 }
 function playRecall(r,done){ warm(r.scenes[0]&&r.scenes[0].img);
   const host=$('#recall'),game=$('#game');
