@@ -34,7 +34,8 @@ const Ending = (function () {
     if (!imgP[src]) imgP[src] = new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
     return imgP[src];
   }
-  function img(src, ms, my, shake, cross) {
+  function img(src0, ms, my, shake, cross) {
+    const src = langImg(src0);
     const d = ms == null ? 900 : ms;
     const old = [...IMG.querySelectorAll('.ri')];
     if (!cross) old.forEach(o => { o.style.transitionDuration = d + 'ms'; o.classList.remove('on'); setTimeout(() => o.remove(), d + 80); });   // 기본: 이전 그림은 같이 사라지며 교체
@@ -44,7 +45,7 @@ const Ending = (function () {
       const o = document.createElement('div'); o.className = 'ri';
       o.style.transitionDuration = d + 'ms';
       if (ok) o.style.backgroundImage = `url("${src}")`;
-      else { o.classList.add('noimg'); o.textContent = `(일러스트 없음: ${src.split('/').pop()})`; }
+      else { o.classList.add('noimg'); o.textContent = TX('(일러스트 없음: {f})',"(Illustration missing: {f})",{f:src.split('/').pop()}); }
       IMG.appendChild(o);
       if (cross) setTimeout(() => old.forEach(x => x.remove()), d + 80);          // cross: 이전 그림은 그대로 두고 새 그림이 위에 겹쳐 뜬 뒤에 제거(중간에 하얗게 비치지 않음)
       if (d === 0) o.classList.add('on');                                      // 페이드 없이 바로
@@ -54,7 +55,8 @@ const Ending = (function () {
   }
 
   /* ----- 대화창: 줄마다 클릭 한 번. 색이 지정된 줄은 이름을 따로 칠하지 않고, 흰 글씨 줄만 이름을 칠해요 ----- */
-  function line(t, c) {
+  function line(t0, c) {
+    const t = LT(t0);
     if (c === 'b') return `<span class="blue">${esc(t)}</span>`;
     if (c && c !== 'k') return `<span style="color:${c}">${esc(t)}</span>`;
     return fmt(esc(t));
@@ -73,7 +75,7 @@ const Ending = (function () {
     show();
   }
   function type(o, next) {
-    const c = o.color || 'b', chars = [...o.text]; let n = 0;
+    const c = o.color || 'b', chars = [...LT(o.text)]; let n = 0;
     UI.style.opacity = 1;
     UI.innerHTML = `<div class="panel dlg">${line('', c)}</div>`;
     const sp = UI.querySelector('span');
@@ -87,7 +89,7 @@ const Ending = (function () {
   function credits(next) {
     K.style.transitionDuration = '600ms'; K.style.opacity = 1;
     const allIn = ((CREDITS.length - 1) * 0.4 + 0.9) * 1000, wait = allIn + CREDITS_HOLD;   // 마지막 줄이 다 뜬 시각 + 3초
-    CR.innerHTML = CREDITS.map((t, i) => `<div style="animation-delay:${(i * 0.4).toFixed(2)}s">${t ? esc(t) : '&nbsp;'}</div>`).join('') + `<span class="tip" style="animation-delay:${(wait / 1000).toFixed(2)}s">▼</span>`;
+    CR.innerHTML = CREDITS.map((t, i) => `<div style="animation-delay:${(i * 0.4).toFixed(2)}s">${t ? esc(LT(t)) : '&nbsp;'}</div>`).join('') + `<span class="tip" style="animation-delay:${(wait / 1000).toFixed(2)}s">▼</span>`;
     CR.classList.add('on');
     const t0 = performance.now();
     const go = () => { if (performance.now() - t0 < wait) { clk = go; return; } clk = null; CR.classList.remove('on'); next(); };
@@ -98,7 +100,7 @@ const Ending = (function () {
   function fin(o) {
     const m = Object.assign({}, ENDING_META[o.kind || kind] || {}, o);
     FIN.style.background = `rgba(0,0,0,${m.dim != null ? m.dim : 0.6})`;
-    FIN.innerHTML = (m.title ? `<div id="endTitle">${esc(m.title)}</div>` : '') + `<button id="endRetry">${esc(m.btn || '다시 시도')}</button>`;
+    FIN.innerHTML = (m.title ? `<div id="endTitle">${esc(LT(m.title))}</div>` : '') + `<button id="endRetry">${esc(LT(m.btn || '다시 시도'))}</button>`;
     FIN.classList.add('on');
     const b = $e('#endRetry'); b.onclick = () => init();
     later(() => b.focus({ preventScroll: true }), 300);
@@ -144,7 +146,7 @@ const Ending = (function () {
   function play(k) {
     reset(); kind = k;
     const sc = ENDINGS[k]; if (!sc) return;
-    sc.forEach(o => { if (o.img) load(o.img); });          // 일러스트는 미리 내려받아 둠(없으면 안내 문구)
+    sc.forEach(o => { if (o.img) load(langImg(o.img)); });          // 일러스트는 미리 내려받아 둠(없으면 안내 문구)
     el.classList.add('on'); GAME.classList.add('ending');
     if (k === 'win') void el.offsetWidth;   // 엔딩2: 켜지자마자 바뀌면 페이드가 생략되므로, 먼저 화면에 그려서 하얗게 서서히 변하게 함
     step(0, sc, run);

@@ -206,3 +206,14 @@ body{display:flex;justify-content:center;align-items:center}
 #game.ending #gear{z-index:30;opacity:.7;background:rgba(0,0,0,.55)}
 #game.ending #settings{z-index:31}
 #game.ending #back{display:none}
+
+/* ===== 언어 선택 화면 · 설정의 언어 버튼 ===== */
+#langScreen{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*3);background:#05060a;color:#fff;text-align:center;padding:0 10%}
+#langScreen.on{display:flex}
+#langScreen .lt{font-size:calc(var(--u)*5);line-height:1.6;margin-bottom:calc(var(--u)*2)}
+#langScreen .lt small{display:block;font-size:calc(var(--u)*3);color:#9aa3b8}
+.lbig{width:70%;padding:calc(var(--u)*2.2);font-size:calc(var(--u)*4.5);background:#141a2b;color:#fff;border:1px solid #2a4bff;border-radius:6px;cursor:pointer}
+.lbig:hover{background:#1d2a4d}
+.lang2{display:inline-flex;gap:6px}
+.lbtn{font:inherit;background:#141a2b;color:#fff;border:1px solid #2a4bff;padding:4px 10px;cursor:pointer;opacity:.6}
+.lbtn.active{opacity:1;background:#2a4bff}

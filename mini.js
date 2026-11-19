@@ -26,12 +26,12 @@ function runMini(i, g, title) {
     const letters = pickLetters(g.type === 'mash' ? g.keys : g.n);
     const ratio = c.hp / c.maxHp;
     const amp = c.id === 'lacie' && g.type === 'hold' ? (ratio <= MINI.trembleLow ? MINI.trembleAmpLow : ratio <= MINI.trembleMid ? MINI.trembleAmpMid : 0) : 0;
-    const note = g.type === 'tap' ? '표시된 키를 모두 누르세요! (순서 상관없음)'
-      : g.type === 'mash' ? `각 키를 ${g.times}번씩 연타하세요!`
-      : `모든 키를 동시에 ${g.sec}초 동안 누르고 있으세요!`;
+    const note = g.type === 'tap' ? TX('표시된 키를 모두 누르세요! (순서 상관없음)',"Press all the shown keys! (Any order)")
+      : g.type === 'mash' ? TX('각 키를 {t}번씩 연타하세요!',"Mash each key {t} times!",{t:g.times})
+      : TX('모든 키를 동시에 {s}초 동안 누르고 있으세요!',"Hold all keys down together for {s} seconds!",{s:g.sec});
     const mt = navigator.maxTouchPoints;
     const warn = g.type === 'hold' && typeof TOUCH !== 'undefined' && TOUCH && mt > 0 && mt < g.n
-      ? `동시 터치 한계(${mt}개)! 어려우면 ⚙에서 간소화` : '';
+      ? TX('동시 터치 한계({m}개)! 어려우면 ⚙에서 간소화',"Touch limit ({m})! If it's too hard, turn on Simplify in ⚙",{m:mt}) : '';
 
     host.innerHTML = `<div class="panel mini wait ${amp ? 'trem' : ''}" style="--c:${c.color};--a:${amp}">
       <div class="mhead"><span>${colorize(title)}</span><span class="mstat"></span></div>
@@ -50,7 +50,7 @@ function runMini(i, g, title) {
       if (done) return; done = true; phase = 'end';
       cancelAnimationFrame(raf); off.forEach(f => f());
       panel.classList.remove('wait', 'trem'); panel.classList.add(ok ? 'win' : 'lose');
-      stat.textContent = ok ? '성공!' : '실패...'; stat.className = 'mstat ' + (ok ? 'ok' : 'ng');
+      stat.textContent = ok ? TX('성공!','Success!') : TX('실패...','Failed...'); stat.className = 'mstat ' + (ok ? 'ok' : 'ng');
       setTimeout(() => {
         document.body.classList.remove('mini-on'); host.innerHTML = ''; resolve(ok);
       }, ok ? 450 : 700);
@@ -61,7 +61,7 @@ function runMini(i, g, title) {
     const timed = now => {                                    // tap, mash: 제한시간 바
       const left = g.sec * 1000 - (now - t0);
       fill.style.width = Math.max(0, left / (g.sec * 1000) * 100) + '%';
-      stat.textContent = (Math.max(0, left) / 1000).toFixed(1) + '초';
+      stat.textContent = (Math.max(0, left) / 1000).toFixed(1) + TX('초','s');
       if (left <= 0) finish(false);
     };
 
@@ -90,7 +90,7 @@ function runMini(i, g, title) {
       const src = new Map(letters.map(L => [L, new Set()]));
       let since = 0, slips = 0;
       const allHeld = () => letters.every(L => src.get(L).size > 0);
-      const dots = () => '기회 ' + '●'.repeat(Math.max(0, g.slip - slips)) + '○'.repeat(Math.min(g.slip, slips));
+      const dots = () => TX('기회 ','Chances ') + '●'.repeat(Math.max(0, g.slip - slips)) + '○'.repeat(Math.min(g.slip, slips));
       const refresh = () => letters.forEach(L => keyEl(L).classList.toggle('on', src.get(L).size > 0));
       const paint = () => { stat.textContent = dots(); stat.classList.toggle('ng', slips >= g.slip); };
       paint();
@@ -136,7 +136,7 @@ function runMini(i, g, title) {
     });
 
     /* ----- 시작: 잠깐 준비 시간을 준 뒤 입력/타이머 시작 ----- */
-    stat.textContent = g.type === 'hold' ? stat.textContent : '준비!';
+    stat.textContent = g.type === 'hold' ? stat.textContent : TX('준비!','Ready!');
     setTimeout(() => {
       if (done) return;
       phase = 'go'; panel.classList.remove('wait'); t0 = performance.now();

@@ -1,13 +1,13 @@
 /* ===== 게임 로직 (data.js를 먼저 불러온 뒤 실행) ===== */
 const $=s=>document.querySelector(s), ui=$('#ui'), TOUCH=matchMedia('(hover:none)').matches;
-const OK={}; let G, msgQ=[], msgDone=null;
+const OK={}; let G, msgQ=[], msgDone=null, lastRedo=null;
 const preload=src=>new Promise(r=>{if(!src)return r();const im=new Image();im.onload=()=>{OK[src]=1;r()};im.onerror=()=>r();im.src=src;});
 const art=src=>src&&OK[src]?src:null;
 const alive=c=>c.hp>0, rnd=(a,b)=>a+Math.random()*(b-a);
 /* ----- 대화 텍스트: 이름 색칠 + 데미지 숫자 볼드 ----- */
 const NAME_RE=new RegExp(Object.keys(NAME_COLORS).join('|'),'g');
 const colorize=t=>t.replace(NAME_RE,n=>`<span style="color:${NAME_COLORS[n]}">${n}</span>`);
-const fmt=t=>colorize(t).replace(/(\d+)(?=의 데미지)/g,'<b>$1</b>');
+const fmt=t=>colorize(t).replace(/(\d+)(?=의 데미지| damage)/g,'<b>$1</b>');
 /* ----- 상태 효과: 목록에 {k,from,to}(절대 턴 번호)로 저장 ----- */
 const addSt=(list,k,f)=>list.push({k,from:G.turn+f.from,to:G.turn+f.to});
 const has=(list,k)=>list.some(s=>s.k===k&&s.from<=G.turn&&G.turn<=s.to);
@@ -18,8 +18,8 @@ const liveAnimals=()=>G.animals.filter(a=>a.hp>0);
 function syncPanic(c){ // HP가 panicAt 이하면 패닉(행동불능), 회복하면 해제. 새로 바뀌면 메시지 반환
   if(!c.panicAt) return null;
   const p=c.hp>0&&c.hp/c.maxHp<=c.panicAt;
-  if(p&&!c.panic){c.panic=true;sfx('panic');return `${c.name}은(는) 공포에 질려 패닉에 빠졌다! 더는 움직일 수 없다...`;}
-  if(!p&&c.panic){c.panic=false;return c.hp>0?`${c.name}은(는) 간신히 정신을 차렸다.`:null;}
+  if(p&&!c.panic){c.panic=true;sfx('panic');return TX('{n}은(는) 공포에 질려 패닉에 빠졌다! 더는 움직일 수 없다...',"{n} is paralyzed with fear and panics! Can't move anymore...",{n:c.name});}
+  if(!p&&c.panic){c.panic=false;return c.hp>0?TX('{n}은(는) 간신히 정신을 차렸다.',"{n} barely regained composure.",{n:c.name}):null;}
   return null;
 }
 
@@ -69,23 +69,23 @@ function setBossArt(){
 }
 const pc=v=>Math.round(Math.abs(v-1)*100);
 const SPEC={ // 받는 효과만 간단히 (스킬 이름 제외). 수치는 FX 값에서 자동 계산
-  weak:()=>[`공격력 -${pc(FX.summonDebuff.atk)}%`,`받는 피해 +${pc(FX.summonDebuff.takeMul)}%`],
-  dodge:()=>[`회피 +${Math.round(FX.coffee.dodge*100)}%`],
-  dominate:()=>[`공격력 -${pc(FX.dominate.atk)}%`,`받는 피해 +${pc(FX.dominate.def)}%`],
-  bind:()=>['행동 불가']
+  weak:()=>[TX('공격력 -{p}%','ATK -{p}%',{p:pc(FX.summonDebuff.atk)}),TX('받는 피해 +{p}%','Damage taken +{p}%',{p:pc(FX.summonDebuff.takeMul)})],
+  dodge:()=>[TX('회피 +{p}%','Dodge +{p}%',{p:Math.round(FX.coffee.dodge*100)})],
+  dominate:()=>[TX('공격력 -{p}%','ATK -{p}%',{p:pc(FX.dominate.atk)}),TX('받는 피해 +{p}%','Damage taken +{p}%',{p:pc(FX.dominate.def)})],
+  bind:()=>[TX('행동 불가','Cannot act')]
 };
 const chips=list=>list.filter(s=>s.to>=G.turn).flatMap(s=>{
-  const n=s.from>G.turn?`다음 턴부터 ${s.to-s.from+1}턴`:`${s.to-G.turn+1}턴`;
+  const n=s.from>G.turn?TX('다음 턴부터 {x}턴',"From next turn, {x} turns",{x:s.to-s.from+1}):TX('{x}턴',"{x} turn(s)",{x:s.to-G.turn+1});
   return SPEC[s.k]().map(t=>`${t}(${n})`);
 }).map(t=>`<span class="chip">${t}</span>`).join('');
-const passives=c=>[c.dodge?`회피 ${Math.round(c.dodge*100)}%`:'',c.guard?`받는 피해 -${Math.round(c.guard*100)}%`:'',
-  ...(c.tags||[])].filter(Boolean);
+const passives=c=>[c.dodge?TX('회피 {p}%','Dodge {p}%',{p:Math.round(c.dodge*100)}):'',c.guard?TX('받는 피해 -{p}%','Damage taken -{p}%',{p:Math.round(c.guard*100)}):'',
+  ...(c.tags||[]).map(LN)].filter(Boolean);
 function render(){
   setBossArt();
   $('#bossHp').style.width=Math.max(0,G.boss/BOSS.maxHp*100)+'%';
   $('#bossSt').innerHTML=chips(G.bossSt);
   $('#animals').innerHTML=liveAnimals().length?G.animals.map((a,k)=>
-    `<div class="an ${a.hp<=0?'dead':''}"><span>소동물${k+1}</span><div class="bar hp"><i style="width:${a.hp/ANIMAL.hp*100}%"></i></div></div>`).join(''):'';
+    `<div class="an ${a.hp<=0?'dead':''}"><span>${TX('소동물{k}','Creature {k}',{k:k+1})}</span><div class="bar hp"><i style="width:${a.hp/ANIMAL.hp*100}%"></i></div></div>`).join(''):'';
   const cs=G.p.map(c=>({c,src:portrait(c),weak:c.hp>0&&c.hp/c.maxHp<=0.3}));
   $('#portraits').innerHTML=cs.map(({c,src,weak})=>src?
     `<div class="pl ${c.hp<=0&&!art(ART[c.id].ko)?'ko':''} ${weak?'weak':''}" style="background-image:url(${src})"></div>`:'').join('');
@@ -93,7 +93,7 @@ function render(){
     `<div class="m ${src?'':'noart'} ${G.cur===i?'cur':''} ${c.hp<=0?'ko':''} ${c.hit?'hit':''} ${c.skillFx?'skill':''} ${art(ART[c.id].hit)?'':'nohitart'}" id="m${i}" style="left:${c.x/9}%;--c:${c.color}">
      <div class="chips">${chips(c.st)}</div>
      <div class="passives">${passives(c).map(p=>`<span>${p}</span>`).join('')}</div>
-     ${src?'':`<div class="ic">${c.icon}</div>`}
+     ${src?'':`<div class="ic">${LN(c.icon)}</div>`}
      <div class="rows"><div class="row">HP<div class="bar hp"><i style="width:${c.hp/c.maxHp*100}%"></i></div></div>
      <div class="row">MP<div class="bar mp"><i style="width:${c.mp/c.maxMp*100}%"></i></div></div></div></div>`).join('');
   $('#back').disabled=!G.back;
@@ -154,13 +154,13 @@ function delta(i,kind,n){ // 아군 HP(빨강)/MP(파랑) 변화 수치를 HP바
   $('#game').appendChild(d);setTimeout(()=>d.remove(),DELTA_MS);
 }
 /* ===== 대화창: 화면 아무 곳이나 좌클릭(터치)하면 진행 ===== */
-function say(lines,done){
+function say(lines,done){ lastRedo=null;
   G.cur=null;G.back=null;render();
   msgQ=lines.map(l=>typeof l==='string'?[l,'k']:l);msgDone=done;showMsg();
 }
 function showMsg(){ // 줄 = [글, 색('k' 검정·흰 글씨 / 'b' 파랑 / '#rrggbb' 직접 지정), 자동으로 넘어갈 ms(선택)]
   clearTimeout(TM.auto);
-  const cur=msgQ[0],[t,c,auto]=cur,st=c&&c[0]==='#'?` style="color:${c}"`:'';
+  const cur=msgQ[0],[t0,c,auto]=cur,t=LT(t0),st=c&&c[0]==='#'?` style="color:${c}"`:'';
   const body=c&&c!=='k'?t.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])):fmt(t); // 색이 지정된(화자) 줄은 글 안의 이름을 따로 색칠하지 않음
   ui.innerHTML=`<div class="panel dlg"><span class="${c==='b'?'blue':''}"${st}>${body}</span><span class="tip">▼</span></div>`;
   if(auto){const g=G;TM.auto=setTimeout(()=>{if(g===G&&msgQ[0]===cur)advance();},auto);}
@@ -225,7 +225,7 @@ function startTurn(){
   if(G.phase===2) G.p2n++;
   const L=G.phase===2?[...BOSS2_LINES[Math.min(G.p2n-1,BOSS2_LINES.length-1)]]:[BOSS_LINES[Math.min(G.turn-1,BOSS_LINES.length-1)]];
   if(isKillTurn()) L.push(...P2_OMEN);
-  G.p.forEach(c=>{if(c.panic&&c.hp>0)L.push(`${c.name}은(는) 패닉에 빠져 움직이지 못한다...`);});
+  G.p.forEach(c=>{if(c.panic&&c.hp>0)L.push(TX('{n}은(는) 패닉에 빠져 움직이지 못한다...',"{n} is panicking and cannot move...",{n:c.name}));});
   say(L,()=>chooseFor(0));
 }
 function nextAlive(i,d){while(i>=0&&i<3&&!canAct(G.p[i]))i+=d;return i;}
@@ -235,11 +235,11 @@ function chooseFor(i){
   G.idx=i;G.cur=i;G.cmds[i]=null;showMain(i);
 }
 function backFrom(i){const j=nextAlive(i-1,-1);return j>=0?()=>chooseFor(j):null;}
-function showMain(i){
+function showMain(i){ lastRedo=()=>showMain(i);
   G.back=backFrom(i);render();
   ui.innerHTML=`<div class="main" style="display:flex;flex-direction:column;gap:1.2%;height:100%">
-   <button class="btn" id="a-atk">공격</button><button class="btn" id="a-skl">스킬</button>
-   <button class="btn" id="a-itm">아이템</button><button class="btn" id="a-def">방어</button>${G.phase===2?'<button class="btn" id="a-run">도망가기</button>':''}</div>`;
+   <button class="btn" id="a-atk">${TX('공격','Fight')}</button><button class="btn" id="a-skl">${TX('스킬','Ability')}</button>
+   <button class="btn" id="a-itm">${TX('아이템','Item')}</button><button class="btn" id="a-def">${TX('방어','Guard')}</button>${G.phase===2?'<button class="btn" id="a-run">'+TX('도망가기','Run away')+'</button>':''}</div>`;
   ui.firstChild.className='main';ui.firstChild.style.cssText='display:flex;flex-direction:column;gap:1.2%;flex:1';
   if(G.p[i].shock){ // 행동불능(바다 회상 이후 파시아): 도망가기 외에는 무엇을 눌러도 아무것도 하지 못하고 턴이 넘어감
     ['#a-atk','#a-skl','#a-itm','#a-def'].forEach(id=>{$(id).onclick=()=>noAction(i);});
@@ -260,12 +260,12 @@ function tryEscape(i){
   say([[L[c.id],NAME_COLORS[c.name]]],()=>{G.cur=i;showMain(i);});
 }
 function noAction(i){ // 아무 행동도 하지 못하고 다음 캐릭터로 (G.cmds[i]는 null이라 실행 단계에서 건너뜀)
-  say(['하지만 아무것도 하지 못했다.'],()=>chooseFor(i+1));
+  say([TX('하지만 아무것도 하지 못했다.',"But nothing could be done.")],()=>chooseFor(i+1));
 }
 function fleeAsk(i,k){ // 도망가기 되묻기: FLEE_ASK를 차례로 묻고, 매번 [도망간다]를 고르면 엔딩3. [돌아간다]/↩ 는 메뉴로 돌아감
   say([[FLEE_ASK[k],'k']],()=>{
     G.cur=i;G.back=()=>showMain(i);render();
-    ui.innerHTML='<div class="main"><button class="btn" id="f-yes">도망간다</button><button class="btn" id="f-no">돌아간다</button></div>';
+    ui.innerHTML='<div class="main"><button class="btn" id="f-yes">'+TX('도망간다','Run away')+'</button><button class="btn" id="f-no">'+TX('돌아간다','Go back')+'</button></div>';
     ui.firstChild.style.cssText='display:flex;flex-direction:column;gap:1.2%;flex:1';
     $('#f-yes').onclick=()=>k+1>=FLEE_ASK.length?end('flee'):fleeAsk(i,k+1);
     $('#f-no').onclick=()=>showMain(i);
@@ -286,23 +286,23 @@ function pickMenu(entries,hint,onPick){
   });
   focusFirst();
 }
-function showSkills(i){
+function showSkills(i){ lastRedo=()=>showSkills(i);
   const c=G.p[i];G.back=()=>showMain(i);render();
   pickMenu(c.skills.map(s=>{
     const off=(s.fx==='bind'&&isKillTurn())||c.mp<s.mp||c.hp<=s.hp||(s.needLow&&c.hp/c.maxHp>0.6)||(s.fx==='summon'&&liveAnimals().length>=ANIMAL.count);
-    return {label:s.n,off,desc:`${s.n}  (MP ${s.mp}${s.hp?` / HP ${s.hp}`:''})\n${s.desc}`};
-  }),'스킬을 선택하세요.',k=>commit(i,{t:'skill',s:c.skills[k]}));
+    return {label:LN(s.n),off,desc:`${LN(s.n)}  (MP ${s.mp}${s.hp?` / HP ${s.hp}`:''})\n${LT(s.desc)}`};
+  }),TX('스킬을 선택하세요.','Choose an ability.'),k=>commit(i,{t:'skill',s:c.skills[k]}));
 }
-function showItems(i){
+function showItems(i){ lastRedo=()=>showItems(i);
   const c=G.p[i];G.back=()=>showMain(i);render();
-  pickMenu(c.items.map(it=>({label:`${it.n} × ${it.q}`,off:it.q<=0,desc:`${it.n}\n${it.desc}`})),
-    '아이템을 선택하세요.',k=>showTargets(i,c.items[k]));
+  pickMenu(c.items.map(it=>({label:`${LN(it.n)} × ${it.q}`,off:it.q<=0,desc:`${LN(it.n)}\n${LT(it.desc)}`})),
+    TX('아이템을 선택하세요.','Choose an item.'),k=>showTargets(i,c.items[k]));
 }
-function showTargets(i,it){
+function showTargets(i,it){ lastRedo=()=>showTargets(i,it);
   G.back=()=>showItems(i);render();
-  pickMenu(G.p.map(t=>({label:t.name,color:NAME_COLORS[t.name],off:it.revive?t.hp>0:t.hp<=0,
-    desc:`${t.name}\nHP ${t.hp}/${t.maxHp}  MP ${t.mp}/${t.maxMp}`})),
-    `${it.n}을(를) 누구에게 사용할까요?`,k=>commit(i,{t:'item',it,to:k}));
+  pickMenu(G.p.map(t=>({label:LN(t.name),color:NAME_COLORS[t.name],off:it.revive?t.hp>0:t.hp<=0,
+    desc:`${LN(t.name)}\nHP ${t.hp}/${t.maxHp}  MP ${t.mp}/${t.maxMp}`})),
+    TX('{n}을(를) 누구에게 사용할까요?',"Use {n} on whom?",{n:it.n}),k=>commit(i,{t:'item',it,to:k}));
 }
 function commit(i,cmd){G.cmds[i]=cmd;chooseFor(i+1);}
 /* ===== 행동 실행 ===== */
@@ -327,50 +327,50 @@ function hitBoss(dmg){ // 실제로 들어간 데미지를 반환
 }
 function animalAct(){
   const d=hitBoss(ANIMAL.dmg*rnd(.9,1.1));
-  return [`소동물이 미윤에게 달려들었다! ${d}의 데미지.`];
+  return [TX('소동물이 미윤에게 달려들었다! {d}의 데미지.',"A small creature lunges at Miyoon! Miyoon takes {d} damage.",{d})];
 }
 /* 스킬 결과 처리: 미니게임 성공 여부와 상관없이 MP/HP는 소모, 실패하면 효과 없이 "빗나갔다" */
 function skillResult(i,c,s,ok){
-  const L=[`${c.name}의 「${s.n}」!`];
+  const L=[TX('{n}의 「{s}」!',"{n}'s {s}!",{n:c.name,s:s.n})];
   const hp0=c.hp;c.mp-=s.mp;c.hp=Math.max(1,c.hp-(s.hp||0));
   delta(i,'mp',-s.mp);delta(i,'hp',c.hp-hp0);
-  if(!ok){L.push('하지만 빗나갔다...');const pm=syncPanic(c);if(pm)L.push(pm);return L;}
+  if(!ok){L.push(TX('하지만 빗나갔다...',"But it missed..."));const pm=syncPanic(c);if(pm)L.push(pm);return L;}
   sfxAny(s.sfx,'skill');flashSkill(i);playVfx(s.vfx,s.vfxColor,s.sparkle);
   if(s.fx==='summon'){
     let n=0;for(let k=0;k<ANIMAL.count;k++)if(!G.animals[k]||G.animals[k].hp<=0){G.animals[k]={hp:ANIMAL.hp};n++;}
     addSt(c.st,'weak',FX.summonDebuff);
-    L.push(`소동물 ${n}마리가 나타났다! 하지만 힘을 쓴 ${c.name}은(는) 다음 2턴 동안 힘이 빠질 것 같다.`);
+    L.push(TX('소동물 {n}마리가 나타났다! 하지만 힘을 쓴 {c}은(는) 다음 2턴 동안 힘이 빠질 것 같다.',"{n} small creatures appeared! But {c} will be weakened for the next 2 turns.",{n,c:c.name}));
   }else if(s.fx==='dominate'){
     addSt(G.bossSt,'dominate',FX.dominate);
-    L.push(`${c.name}의 눈빛이 미윤을 사로잡았다! 미윤의 공격력과 방어력이 크게 떨어졌다.`);
+    L.push(TX('{c}의 눈빛이 미윤을 사로잡았다! 미윤의 공격력과 방어력이 크게 떨어졌다.',"{c}'s gaze has caught Miyoon! His ATK and DEF plummeted.",{c:c.name}));
   }else if(s.fx==='bind'){
-    if(Math.random()<s.rate){addSt(G.bossSt,'bind',FX.bind);L.push('늘어난 꼬리가 미윤을 휘감았다! 미윤은 움직일 수 없다.');}
-    else L.push('하지만 꼬리는 미윤에게 닿지 못했다...');
+    if(Math.random()<s.rate){addSt(G.bossSt,'bind',FX.bind);L.push(TX('늘어난 꼬리가 미윤을 휘감았다! 미윤은 움직일 수 없다.',"The stretched tail wraps around Miyoon! He cannot move."));}
+    else L.push(TX('하지만 꼬리는 미윤에게 닿지 못했다...',"But the tail failed to reach Miyoon..."));
   }else{
-    const d=hitBoss(atkOf(c)*s.pow*rnd(.9,1.1));L.push(`미윤에게 ${d}의 데미지.`);
+    const d=hitBoss(atkOf(c)*s.pow*rnd(.9,1.1));L.push(TX('미윤에게 {d}의 데미지.',"{d} damage to Miyoon.",{d}));
   }
   const pm=syncPanic(c);if(pm)L.push(pm);
   return L;
 }
 function doAct(i,cmd){
   const c=G.p[i];
-  if(cmd.t==='def'){sfx('guard');c.def=true;return [`${c.name}은(는) 몸을 웅크려 방어 태세를 취했다.`];}
+  if(cmd.t==='def'){sfx('guard');c.def=true;return [TX('{n}은(는) 몸을 웅크려 방어 태세를 취했다.',"{n} crouches into a defensive stance.",{n:c.name})];}
   if(cmd.t==='atk'){ // 일반공격은 미니게임 없이 바로 적용(미니게임은 스킬에만)
     sfxAny('atk_'+c.id,'atk');const d=hitBoss(atkOf(c)*rnd(.9,1.1));
-    return [`${c.name}의 공격! 미윤에게 ${d}의 데미지.`];
+    return [TX('{n}의 공격! 미윤에게 {d}의 데미지.',"{n}'s attack! {d} damage to Miyoon.",{n:c.name,d})];
   }
   if(cmd.t==='skill'){
     const s=cmd.s;
     if(s.fx==='dominate'&&has(G.bossSt,'dominate')) // 이미 장악 중이면 발동하지 않고 비용도 쓰지 않음
-      return [`${c.name}의 「${s.n}」! 하지만 미윤은 이미 장악되어 있어 효과가 발동되지 않았다.`];
-    return runMini(i,s.game,`${c.name} · ${s.n}`).then(ok=>skillResult(i,c,s,ok));
+      return [TX('{n}의 「{s}」! 하지만 미윤은 이미 장악되어 있어 효과가 발동되지 않았다.',"{n}'s {s}! But Miyoon is already under control, so it had no effect.",{n:c.name,s:s.n})];
+    return runMini(i,s.game,TX('{n} · {s}','{n} · {s}',{n:c.name,s:s.n})).then(ok=>skillResult(i,c,s,ok));
   }
   const it=cmd.it,t=G.p[cmd.to];it.q--;let msg;
-  if(it.heal){const h=Math.min(it.heal,t.maxHp-t.hp);t.hp+=h;sfx('heal');delta(cmd.to,'hp',h);msg=`${t.name}의 HP가 ${h} 회복되었다.`;}
-  else if(it.mp){const m=Math.min(it.mp,t.maxMp-t.mp);t.mp+=m;sfx('mp');delta(cmd.to,'mp',m);msg=`${t.name}의 MP가 ${m} 회복되었다.`;
-    if(it.dodge){addSt(t.st,'dodge',FX.coffee);msg+=' 몸이 가벼워졌다!';}}
-  else{sfx('revive');t.hp=it.revive;delta(cmd.to,'hp',it.revive);msg=`${t.name}이(가) 정신을 차리고 일어났다!`;}
-  const L=[`${c.name}은(는) ${it.n}을(를) 사용했다. ${msg}`],pm=syncPanic(t);if(pm)L.push(pm);
+  if(it.heal){const h=Math.min(it.heal,t.maxHp-t.hp);t.hp+=h;sfx('heal');delta(cmd.to,'hp',h);msg=TX('{n}의 HP가 {h} 회복되었다.',"{n}'s HP recovered by {h}.",{n:t.name,h});}
+  else if(it.mp){const m=Math.min(it.mp,t.maxMp-t.mp);t.mp+=m;sfx('mp');delta(cmd.to,'mp',m);msg=TX('{n}의 MP가 {m} 회복되었다.',"{n}'s MP recovered by {m}.",{n:t.name,m});
+    if(it.dodge){addSt(t.st,'dodge',FX.coffee);msg+=TX(' 몸이 가벼워졌다!',' Feels lighter!');}}
+  else{sfx('revive');t.hp=it.revive;delta(cmd.to,'hp',it.revive);msg=TX('{n}이(가) 정신을 차리고 일어났다!',"{n} came to and got back up!",{n:t.name});}
+  const L=[TX('{n}은(는) {i}을(를) 사용했다. ',"{n} used {i}. ",{n:c.name,i:it.n})+msg],pm=syncPanic(t);if(pm)L.push(pm);
   return L;
 }
 /* ===== 보스 턴: 일반 3회 + 전체 1회 ===== */
@@ -410,9 +410,9 @@ function runFinal(i){
   if(it.vanish) return vanishBoss();
   next();
 }
-function finalBtn(o,done){ // 큰 '공격하기' 버튼 하나. 글자색은 그 캐릭터의 대표색
+function finalBtn(o,done){ lastRedo=null; // 큰 '공격하기' 버튼 하나. 글자색은 그 캐릭터의 대표색
   const c=G.p.find(x=>x.id===o.who),col=NAME_COLORS[c.name],need=o.clicks||1;
-  ui.innerHTML=`<div class="main"><button class="btn fbtn${o.tremble?' trem'+o.tremble:''}" id="f-atk" style="color:${col}"><i class="gauge" style="background:${col}"></i><span>공격하기</span></button></div>`;
+  ui.innerHTML=`<div class="main"><button class="btn fbtn${o.tremble?' trem'+o.tremble:''}" id="f-atk" style="color:${col}"><i class="gauge" style="background:${col}"></i><span>${TX('공격하기','Attack')}</span></button></div>`;
   ui.firstChild.style.cssText='display:flex;flex-direction:column;gap:1.2%;flex:1';
   const b=$('#f-atk'),gauge=b.querySelector('.gauge');let n=0;
   b.onclick=()=>{
@@ -461,7 +461,7 @@ function recallShow(src,optional){ // 일러스트 교체(이전 장면 위에 �
   const host=$('#recall'),n=document.createElement('div'),a=src?art(src):null;
   if(src&&!a&&optional) return;
   n.className='ri'+(!src?' black':a?'':' noimg');
-  if(a) n.style.backgroundImage=`url(${a})`; else if(src) n.textContent=`(회상 일러스트 없음: ${src})`;
+  if(a) n.style.backgroundImage=`url(${a})`; else if(src) n.textContent=TX('(회상 일러스트 없음: {s})',"(Recall illustration missing: {s})",{s:src});
   host.appendChild(n);
   requestAnimationFrame(()=>requestAnimationFrame(()=>n.classList.add('on')));
   setTimeout(()=>{let o=n.previousElementSibling;while(o){const q=o.previousElementSibling;o.remove();o=q;}},560); // 이 장면보다 먼저 깔린 장면만 치움(빨리 넘겨서 더 새로운 장면이 있어도 지우지 않음)
@@ -553,45 +553,45 @@ function enterPhase2(){ // 진입 연출. 이번 턴 미윤의 공격은 생략�
   });
 }
 function killAttack(){ // 전체 즉사기: 회피·소동물 대신 맞기 무효, 패닉 중인 캐릭터는 자동 방어, 방어하면 현재 HP의 P2.guardRatio만 잃고 버팀
-  const lines=['미윤의 힘이 세계를 집어삼킬 듯 쏟아진다...!'],hitIdx=[];
+  const lines=[TX('미윤의 힘이 세계를 집어삼킬 듯 쏟아진다...!',"Miyoon's power surges forth, threatening to swallow the world...!")],hitIdx=[];
   G.p.filter(alive).forEach(t=>{
     const ti=G.p.indexOf(t);let d;t.hitAsPanic=t.panic;
-    if(t.def||t.panic){d=Math.min(t.hp-1,Math.floor(t.hp*P2.guardRatio));t.hp-=d;lines.push(t.def?`${t.name}은(는) 온 힘을 다해 막아내 간신히 버텼다! ${d}의 데미지를 받았다.`:`${t.name}은(는) 패닉 속에서도 본능적으로 몸을 웅크려 버텨냈다! ${d}의 데미지를 받았다.`);}
-    else{d=t.hp;t.hp=0;lines.push(`${t.name}은(는) 버티지 못하고 쓰러졌다...`);}
+    if(t.def||t.panic){d=Math.min(t.hp-1,Math.floor(t.hp*P2.guardRatio));t.hp-=d;lines.push(t.def?TX('{n}은(는) 온 힘을 다해 막아내 간신히 버텼다! {d}의 데미지를 받았다.',"{n} barely held on by bracing with everything! Took {d} damage.",{n:t.name,d}):TX('{n}은(는) 패닉 속에서도 본능적으로 몸을 웅크려 버텨냈다! {d}의 데미지를 받았다.',"Even in a panic, {n} instinctively curled up and endured! Took {d} damage.",{n:t.name,d}));}
+    else{d=t.hp;t.hp=0;lines.push(TX('{n}은(는) 버티지 못하고 쓰러졌다...',"{n} couldn't hold on and collapsed...",{n:t.name}));}
     const pm=syncPanic(t);if(pm)lines.push(pm);
     delta(ti,'hp',-d);hitIdx.push(ti);
   });
-  if(liveAnimals().length){G.animals.forEach(a=>a.hp=0);lines.push('소동물들도 휩쓸려 쓰러졌다...');}
+  if(liveAnimals().length){G.animals.forEach(a=>a.hp=0);lines.push(TX('소동물들도 휩쓸려 쓰러졌다...',"The small creatures were swept away too..."));}
   sfx('kill_hit');bigShake();flashAttack();hitIdx.forEach(flashHit);
   say(lines,afterBoss);
 }
 function bossTurn(){
-  if(has(G.bossSt,'bind')) return say(['미윤은 꼬리에 묶여 움직이지 못한다!'],afterBoss);
+  if(has(G.bossSt,'bind')) return say([TX('미윤은 꼬리에 묶여 움직이지 못한다!',"Miyoon is bound by the tail and cannot move!")],afterBoss);
   if(isKillTurn()) return killAttack();
   const p2=G.phase===2,D=p2?P2:BOSS;
   const all=p2?(G.p2n>1&&G.p2n%4===1):G.turn%4===0,al=G.p.filter(alive),lines=[],hitIdx=[]; // 일반 3회 + 전체 1회 (2페이즈는 즉사기 다음 턴부터 세기 시작)
   const base=(all?D.allDmg:D.normalDmg)*(has(G.bossSt,'dominate')?FX.dominate.atk:1);
   const targets=all?al:[al[Math.floor(Math.random()*al.length)]];
-  lines.push(all?'미윤의 힘이 폭주한다! 제어하지 못한 힘이 모두를 덮쳤다!':'미윤의 힘이 날뛴다!');
+  lines.push(all?TX('미윤의 힘이 폭주한다! 제어하지 못한 힘이 모두를 덮쳤다!',"Miyoon's power goes berserk! Uncontrolled power engulfs everyone!"):TX('미윤의 힘이 날뛴다!',"Miyoon's power runs wild!"));
   targets.forEach(t=>{
     const ti=G.p.indexOf(t);
-    if(Math.random()<dodgeOf(t)){sfx('dodge');lines.push(`${t.name}은(는) 공격을 피했다!`);return;}
+    if(Math.random()<dodgeOf(t)){sfx('dodge');lines.push(TX('{n}은(는) 공격을 피했다!',"{n} dodged the attack!",{n:t.name}));return;}
     if(!all&&ti===0&&liveAnimals().length){ // 소동물이 파시아 대신 맞는다
       const a=liveAnimals()[0],d=Math.round(base*rnd(.9,1.1));a.hp=Math.max(0,a.hp-d);
-      lines.push(`소동물이 ${t.name} 앞을 막아섰다! 소동물이 ${d}의 데미지를 받았다.`+(a.hp<=0?' 소동물이 쓰러졌다...':''));
+      lines.push(TX('소동물이 {n} 앞을 막아섰다! 소동물이 {d}의 데미지를 받았다.',"A small creature shields {n}! It took {d} damage.",{n:t.name,d})+(a.hp<=0?TX(' 소동물이 쓰러졌다...',' The small creature collapsed...'):''));
       pop($('#m0'),d,'#ff6b81');return;
     }
     t.hitAsPanic=t.panic;
     let d=base*rnd(.9,1.1);
     if(t.def)d*=.5; if(t.guard)d*=(1-t.guard); if(has(t.st,'weak'))d*=FX.summonDebuff.takeMul;
     d=Math.round(d);t.hp=Math.max(0,t.hp-d);
-    lines.push(`${t.name}은(는) ${d}의 데미지를 받았다.`+(t.hp<=0?` ${t.name}은(는) 쓰러졌다...`:''));
+    lines.push(TX('{n}은(는) {d}의 데미지를 받았다.',"{n} took {d} damage.",{n:t.name,d})+(t.hp<=0?TX(' {n}은(는) 쓰러졌다...',' {n} collapsed...',{n:t.name}):''));
     const pm=syncPanic(t);if(pm)lines.push(pm);
     delta(ti,'hp',-d);hitIdx.push(ti);
   });
   if(all&&liveAnimals().length){ // 전체공격은 소동물도 휩쓴다
     const d=Math.round(base*rnd(.9,1.1));liveAnimals().forEach(a=>a.hp=Math.max(0,a.hp-d));
-    lines.push(`소동물들도 ${d}의 데미지를 받았다.`);
+    lines.push(TX('소동물들도 {d}의 데미지를 받았다.',"The small creatures took {d} damage.",{d}));
   }
   const g=$('#game');g.classList.add('shake');setTimeout(()=>g.classList.remove('shake'),350);
   sfx(all?'boss_all':'boss_atk');if(al.some(t=>t.hp<=0))sfx('ko');
@@ -606,4 +606,20 @@ $('#back').onclick=()=>{if(G.back)G.back();};
 $('#retry').onclick=init;
 const srcs=[...Object.values(ART).flatMap(v=>typeof v==='string'?[v]:Object.values(v)),...RECALLS.flatMap(r=>r.scenes.map(s=>s.img))
   .filter(Boolean).concat([FINAL_ILLUST])];
-Promise.all(srcs.map(preload)).then(()=>{setupArt();init();});
+Promise.all(srcs.map(preload)).then(()=>{setupArt();bootStart();});
+
+/* ===== 시작 화면 · 언어 전환 (lang.js 참고) ===== */
+function startGame(){ document.getElementById('langScreen').classList.remove('on'); init(); }
+function onLangChange(){ // 옵션에서 언어를 바꾸면 지금 보이는 글을 바로 다시 그려요
+  applyStatic(); if(!G||G.over) return; render();
+  if(document.body.classList.contains('mini-on')) return;
+  if(msgQ.length) return showMsg();
+  if(lastRedo&&ui.querySelector('.btn')) lastRedo();
+}
+function bootStart(){
+  Lang.load(); applyStatic();
+  document.querySelectorAll('#langScreen [data-lang]').forEach(b=>b.onclick=e=>{e.stopPropagation();Lang.set(b.dataset.lang);startGame();}); // stopPropagation: 같은 클릭이 첫 대사를 넘기지 않게
+  document.querySelectorAll('#settings [data-lang]').forEach(b=>b.onclick=()=>{Lang.set(b.dataset.lang);onLangChange();});
+  if(LANG_ASK_EVERY_LAUNCH||!Lang.saved) document.getElementById('langScreen').classList.add('on');
+  else startGame();
+}

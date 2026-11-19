@@ -14,7 +14,7 @@
   <div class="layer fx" id="atkL"></div>
   <div class="layer wide" id="star1"></div>
   <div class="layer wide" id="star2"></div>
-  <div class="ph"><div class="stars"></div><div class="stars b"></div><div class="phbox">미윤</div></div>
+  <div class="ph"><div class="stars"></div><div class="stars b"></div><div class="phbox" data-tx data-ko="미윤" data-en="Miyoon">미윤</div></div>
   <div class="layer" id="bossWrap"><div class="layer" id="bossL"></div><div class="layer fx" id="bossHitL"></div></div>
   </div>
   <div class="layer" id="portraits"></div>
@@ -24,20 +24,27 @@
   <div id="animals"></div>
   <button id="back" title="되돌아가기" aria-label="되돌아가기">↩</button>
   <button id="gear" title="설정" aria-label="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="5.2" stroke-width="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" stroke-width="3.2"/></svg></button>
-  <div id="settings"><label><input type="checkbox" id="optSimple"><span>미니게임 간소화<small>켜면 공격·스킬 입력이 자동 성공해요.</small></span></label>
-    <div class="srow"><span>배경음</span><input type="range" id="optBgm" min="0" max="100" step="1"><output id="optBgmV"></output></div>
-    <div class="srow"><span>효과음</span><input type="range" id="optSfx" min="0" max="100" step="1"><output id="optSfxV"></output></div>
-    <label><input type="checkbox" id="optMute"><span>음소거</span></label></div>
+  <div id="settings"><label><input type="checkbox" id="optSimple"><span><span data-tx data-ko="미니게임 간소화" data-en="Simplify minigames"></span><small data-tx data-ko="켜면 공격·스킬 입력이 자동 성공해요." data-en="When on, attack and ability inputs succeed automatically."></small></span></label>
+    <div class="srow"><span data-tx data-ko="배경음" data-en="Music"></span><input type="range" id="optBgm" min="0" max="100" step="1"><output id="optBgmV"></output></div>
+    <div class="srow"><span data-tx data-ko="효과음" data-en="Sound effects"></span><input type="range" id="optSfx" min="0" max="100" step="1"><output id="optSfxV"></output></div>
+    <label><input type="checkbox" id="optMute"><span data-tx data-ko="음소거" data-en="Mute"></span></label>
+    <div class="srow"><span data-tx data-ko="언어" data-en="Language"></span><span class="lang2"><button class="lbtn" data-lang="ko">한국어</button><button class="lbtn" data-lang="en">English</button></span></div></div>
   <div id="ui"></div>
   <div id="party"></div>
   <div id="fx"></div>
   <canvas id="noise" width="120" height="214"></canvas>
   <div id="recall"></div>
   <div class="layer" id="skillPortrait"></div>
-  <div id="cover"><div id="coverText"></div><button id="retry">다시 시도</button></div>
+  <div id="langScreen">
+    <div class="lt"><span data-tx data-ko="언어를 선택하세요" data-en="Choose your language"></span><small>한국어 / English</small></div>
+    <button class="lbig" data-lang="ko">한국어</button>
+    <button class="lbig" data-lang="en">English</button>
+  </div>
+  <div id="cover"><div id="coverText"></div><button id="retry" data-tx data-ko="다시 시도" data-en="Try again">다시 시도</button></div>
   <div id="ending"><div id="endW"></div><div id="endImg"></div><div id="endK"></div><div id="endCred"></div><div id="endUi"></div><div id="endFin"></div></div>
 </div>
 <script src="data.js"></script>
+<script src="lang.js"></script>
 <script src="audio.js"></script>
 <script src="vfx.js"></script>
 <script src="mini.js"></script>
