@@ -2,7 +2,11 @@
 const $=s=>document.querySelector(s), ui=$('#ui'), TOUCH=matchMedia('(hover:none)').matches;
 const OK={}; let G, msgQ=[], msgDone=null, lastRedo=null;
 const preload=src=>new Promise(r=>{if(!src)return r();const im=new Image();im.onload=()=>{OK[src]=1;r()};im.onerror=()=>r();im.src=src;});
-const art=src=>src&&OK[src]?src:null;
+const mob=src=>src.replace(/^img\//,'img/m/').replace(/\.png$/,'.webp'); // 모바일용 작은 그림 경로
+const art=src=>{if(!src||!OK[src])return null;return TOUCH&&OK[mob(src)]?mob(src):src;}; // 터치 기기 + 작은 버전이 있으면 그것, 아니면 원본
+/* 2) 미리 디코딩: 곧 쓸 그림만 화면용 비트맵으로 미리 풀어 둠 (전부 풀면 모바일 메모리 부족) */
+const WARM={};
+function warm(src){const s=src&&art(src);if(!s||WARM[s])return;const im=new Image();im.src=s;WARM[s]=im;if(im.decode)im.decode().catch(()=>{});}
 const alive=c=>c.hp>0, rnd=(a,b)=>a+Math.random()*(b-a);
 /* ----- 대화 텍스트: 이름 색칠 + 데미지 숫자 볼드 ----- */
 const NAME_RE=new RegExp(Object.keys(NAME_COLORS).join('|'),'g');
@@ -381,7 +385,7 @@ function afterActions(){ // 아군 행동이 모두 끝난 뒤, 미윤 공격 �
   checkRecalls(bossTurn);
 }
 /* ----- 마지막 일격: 미윤 HP 0 → 레이시·듀크·파시아 순서(FINAL_BLOW, data.js) → 소멸 → 엔딩2 ----- */
-function startFinale(){ // HP 0: 화면이 크고 느리게 좌우로 흔들림 → 미윤 모습이 boss2_final 로 바뀜 → 그 모습으로 마지막 일격 시작
+function startFinale(){ [ART.boss2Final,ART.boss2FinalHit,ART.boss2Final2,ART.boss2Final3,FINAL_ILLUST].forEach(warm); // HP 0: 화면이 크고 느리게 좌우로 흔들림 → 미윤 모습이 boss2_final 로 바뀜 → 그 모습으로 마지막 일격 시작
   G.finale=true;G.cur=null;G.back=null;
   const g=$('#game'),gm=G;
   g.classList.add('sway');
@@ -466,7 +470,7 @@ function recallShow(src,optional){ // 일러스트 교체(이전 장면 위에 �
   requestAnimationFrame(()=>requestAnimationFrame(()=>n.classList.add('on')));
   setTimeout(()=>{let o=n.previousElementSibling;while(o){const q=o.previousElementSibling;o.remove();o=q;}},560); // 이 장면보다 먼저 깔린 장면만 치움(빨리 넘겨서 더 새로운 장면이 있어도 지우지 않음)
 }
-function playRecall(r,done){
+function playRecall(r,done){ warm(r.scenes[0]&&r.scenes[0].img);
   const host=$('#recall'),game=$('#game');
   host.className='on';host.innerHTML='';game.classList.add('recalling');bgmDuck(true);
   requestAnimationFrame(()=>requestAnimationFrame(()=>host.classList.add('show')));
@@ -484,13 +488,13 @@ function playRecall(r,done){
     G.cur=ci;render();
   };
   const next=()=>{
-    if(k>=r.scenes.length){
+    if(k>=r.scenes.length){ for(const x in WARM) delete WARM[x];
       bgmDuck(false);host.classList.remove('show');game.classList.remove('recalling');
       if(r.shock){const c=G.p.find(x=>x.id===r.shock.who);if(c&&c.hp>0){c.shock=true;render();}} // 회상이 끝나는 순간 바로 행동불능 이미지로
       setTimeout(()=>{if(!host.classList.contains('show')){host.className='';host.innerHTML='';}},600);
       return react();
     }
-    const sc=r.scenes[k++];recallShow(sc.img,sc.optional);
+    const sc=r.scenes[k++];warm(r.scenes[k]&&r.scenes[k].img);recallShow(sc.img,sc.optional);
     if(sc.lines&&sc.lines.length) say(sc.lines,next); else setTimeout(next,1200);
   };
   next();
@@ -536,7 +540,7 @@ function bgmWarm(a){try{if(window.Snd)Snd.warm(a);}catch(e){}}
 function sfx(name,opts){try{if(typeof window.playSfx==='function')window.playSfx(name,opts);}catch(e){}}
 function sfxStop(name){try{if(window.Snd)Snd.stopSfx(name);}catch(e){}}
 function sfxAny(...names){const A=AUDIO.sfx||{},k=names.find(n=>n&&A[n]);if(k)sfx(k);} // 앞 이름부터 파일이 지정된 첫 소리를 재생(캐릭터별 → 공통 순) // 효과음 자리(5단계에서 window.playSfx 연결). 이름: 'rip' = 2페이즈 진입 때 찢어지는 소리
-function enterPhase2(){ // 진입 연출. 이번 턴 미윤의 공격은 생략하고 다음 턴(전조 + 즉사기)으로 넘어감
+function enterPhase2(){ [ART.boss2,ART.boss2Hit,ART.boss2Weak,ART.boss2WeakHit].forEach(warm); // 진입 연출. 이번 턴 미윤의 공격은 생략하고 다음 턴(전조 + 즉사기)으로 넘어감
   bgmStop(2500);bgmWarm(['p2','final','end2','end3']); // 미윤이 '왜 아직도 안 도망갔냐'고 할 때 1페이즈 브금 페이드 아웃
   say(P2_PRE_LINES,()=>{ // ① 아직 1페이즈 모습(이미지·배경 그대로)
     const bo=document.createElement('div');bo.id='blackout';$('#game').appendChild(bo);
@@ -604,8 +608,9 @@ function end(r){ // 엔딩 연출은 ending.js(Ending) 가 data.js 의 ENDINGS[r
 }
 $('#back').onclick=()=>{if(G.back)G.back();};
 $('#retry').onclick=init;
-const srcs=[...Object.values(ART).flatMap(v=>typeof v==='string'?[v]:Object.values(v)),...RECALLS.flatMap(r=>r.scenes.map(s=>s.img))
+const srcs0=[...Object.values(ART).flatMap(v=>typeof v==='string'?[v]:Object.values(v)),...RECALLS.flatMap(r=>r.scenes.map(s=>s.img))
   .filter(Boolean).concat([FINAL_ILLUST])];
+const srcs=TOUCH?srcs0.concat(srcs0.map(mob)):srcs0;
 Promise.all(srcs.map(preload)).then(()=>{setupArt();bootStart();});
 
 /* ===== 시작 화면 · 언어 전환 (lang.js 참고) ===== */
