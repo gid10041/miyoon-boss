@@ -26,7 +26,7 @@ const EX = {
   '폭발': 'Explode', '동료 호출': 'Call for help', '장악': 'Control', '구속': 'Bind',
   '붕대': 'Bandage', '회복약': 'Recovery potion', '커피': 'Coffee', '부활약': 'Revival potion',
   '공격력 ↑': 'ATK ↑', '공격하기': 'Attack', '파': 'F', '듀': 'D', '레': 'L',
-  '마지막 전투': 'Final Battle', '크레딧': 'Credits', '제작': 'Created by', '메따': 'Meta', '오코': 'Oco',
+  '마지막 전투': 'Final Battle', '크레딧': 'Credits', '제작': 'Created by', '메따': 'metta', '오코': 'oko',
   '엔딩1. 멸망': 'Ending 1. The End', '다시 하기': 'Play again', '다시 시도': 'Try again'
 };
 
