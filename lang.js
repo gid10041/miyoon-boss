@@ -72,7 +72,7 @@ const PF = {
   /* ── 아이템·스킬 설명 ── */
   'HP를 소량 깎아': "Deals heavy damage at the cost of a little HP.",
   '소동물 2마리를 부른다.': "Summons 2 small creatures. They attack Miyoon or take hits for Fascia. For the next 2 turns, Fascia's ATK and DEF drop.",
-  '눈으로 미윤을 장악해': "Dominates Miyoon with her gaze, greatly lowering his ATK and DEF.",
+  '눈으로 미윤을 장악해': "Dominates Miyoon with his gaze, greatly lowering his ATK and DEF.",
   '30% 확률로 성공하면': "If it succeeds (30% chance), Miyoon cannot attack this turn. Cannot be used on instant-kill attacks.",
   'HP 60% 이하에서': "Usable at 60% HP or less. Deals heavy damage.",
   'MP 중량 회복. 회피': "Restores a large amount of MP. Dodge +30% (this turn and the next).",
@@ -312,7 +312,7 @@ const PF = {
   '언젠가 내가...정말로': "Someday, when I eventually...become a threat to this world...",
   '네가...': "If that ever happens...",
   '그때는 네가': "I want you to...",
-  '......그때는 정말': "...There's really no other choice, so please, you have to kill me.",
+  '......그때는 정말': "...I want you to kill me.",
   '난... 난 못해': "I... I can't do it............",
   '파시아는 충격에': "Fascia is frozen in shock and cannot move.",
   '이제 할 수 있는 건': "All that's left to do... is run away.",
